@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07081a">
+<title>Coin Slot Arcade</title>
+<meta name="description" content="A free browser arcade: 3D racers, shooters and runners, plus a back row of classic 2D cabinets. No downloads, no sign-up.">
+<script>
+// decide the entrance before first paint: full on the first visit this session, short after, none for reduced motion
+(function () {
+  var r = document.documentElement, k = 'none';
+  r.classList.add('js');
+  try {
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches && !location.hash) {
+      k = sessionStorage.getItem('coinslot-intro') ? 'short' : 'full';
+      sessionStorage.setItem('coinslot-intro', '1');
+    }
+  } catch (e) { k = 'none'; }
+  r.dataset.intro = k;
+  if (k !== 'none') r.classList.add('intro-wait', 'intro-' + k);
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@500;600&family=Rubik:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="arcade/arcade.css">
+<link rel="stylesheet" href="arcade/lobby.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<a class="skip" href="#stage">Skip to games</a>
+
+<header class="nav">
+  <a class="brand" href="./" aria-label="Coin Slot home"><span class="brand-coin" aria-hidden="true"></span>COIN SLOT</a>
+  <span class="nav-meta"><span class="dot" aria-hidden="true"></span><span id="count">…</span> games · free play</span>
+  <button class="sound" id="sound" type="button" aria-pressed="true" aria-label="Sound">
+    <span class="sound-bars" aria-hidden="true"><i></i><i></i><i></i></span><span class="sound-lbl">Sound</span>
+  </button>
+</header>
+
+<section class="hero" id="hero" aria-labelledby="hero-title">
+  <div class="hero-pin">
+    <canvas class="hall" id="hall" aria-hidden="true"></canvas>
+    <div class="hall-fallback" aria-hidden="true"><span>COIN</span><span>SLOT</span></div>
+    <div class="hero-shade" aria-hidden="true"></div>
+    <div class="hero-copy">
+      <p class="eyebrow rv" style="--d:0">Browser arcade · open all night</p>
+      <h1 id="hero-title" class="hero-title">Coin Slot</h1>
+      <p class="lede rv" style="--d:1"><strong>Original games, rebuilt in 3D for the browser.</strong> Drift a kart, hold a freighter, run the causeways, pedal the coast. No downloads, no sign-up, high scores stay on this device.</p>
+      <div class="cta rv" style="--d:2">
+        <a class="btn-neon" id="cta-play" href="#stage">Play now</a>
+        <a class="btn-ghost" href="#back-row">The back row ↓</a>
+      </div>
+      <dl class="stats rv" style="--d:3">
+        <div><dt>Cabinets</dt><dd id="stat-games">…</dd></div>
+        <div><dt>Credits</dt><dd>FREE</dd></div>
+        <div><dt>Sign-up</dt><dd>NONE</dd></div>
+      </dl>
+    </div>
+    <div class="scroll-cue" aria-hidden="true"><span></span>Scroll to walk in</div>
+  </div>
+</section>
+
+<main class="floor" id="stage">
+  <div class="sec-head rv-io">
+    <p class="kicker">Main stage</p>
+    <h2>Full 3D games</h2>
+    <p class="sec-note">Each one is its own page. Bookmark the one you like.</p>
+  </div>
+  <div class="stage-grid" id="featured"></div>
+
+  <section class="back-row" id="back-row" aria-labelledby="back-row-title">
+    <div class="sec-head rv-io">
+      <p class="kicker">The back row</p>
+      <h2 id="back-row-title">Mini cabinets</h2>
+      <p class="sec-note" id="mini-count">Quick 2D games. Pick a machine.</p>
+    </div>
+    <div class="row-wrap">
+      <canvas class="row-gl" id="row-gl" aria-hidden="true"></canvas>
+      <ul class="minis" id="minis" role="list"></ul>
+    </div>
+  </section>
+
+  <section class="crew" aria-label="How it was made">
+    <div><h3>3D games</h3><p>Each is its own three.js project in <code>games/&lt;id&gt;/</code>, built to <code>docs/flagship-standard.md</code>.</p></div>
+    <div><h3>Cabinets</h3><p>Hand-coded canvas games on one shared cabinet: game loop, keyboard, swipe and touch-pad input, sound, high scores.</p></div>
+    <div><h3>Add a game</h3><p>Drop it in <code>games/&lt;id&gt;/</code> and add one line to <code>arcade/registry.js</code>.</p></div>
+  </section>
+  <footer class="foot">All games are original works made for Coin Slot. High scores are stored in this browser only.</footer>
+</main>
+
+<div class="intro" id="intro" aria-hidden="true">
+  <div class="intro-slot">
+    <div class="coin"><span></span></div>
+    <div class="slot-plate"><div class="slot"></div><p>INSERT COIN</p></div>
+  </div>
+  <div class="crt-top"></div><div class="crt-bot"></div><div class="crt-line"></div>
+  <p class="intro-skip">Press any key or tap to skip</p>
+</div>
+
+<script src="arcade/registry.js"></script>
+<script src="arcade/lobby.js"></script>
+</body>
+</html>

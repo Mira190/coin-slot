@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1114">
+<title>双门 Twin Gate</title>
+<meta name="description" content="A first-person gate puzzle game. Two linked doorways, fifteen trials, one very patient evaluator.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&text=%E5%8F%8C%E9%97%A8%E7%BF%A0%E6%9C%B1&display=swap">
+<style>
+:root {
+  --jade: #2fe6c0; --verm: #ff5a36; --ink: #11161a; --paper: #eef0ec; --line: rgba(17,22,26,.14);
+  --mono: 'IBM Plex Mono', ui-monospace, monospace; --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --han: 'Noto Serif SC', 'Songti SC', serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1114; color: var(--paper); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0; pointer-events: none; }
+#xhair { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
+#xhair svg { width: 100%; height: 100%; overflow: visible; }
+#xhair .dot { fill: rgba(255,255,255,.85); }
+#xhair .arc { fill: none; stroke-width: 3; stroke-linecap: round; opacity: .35; transition: opacity .2s, stroke-width .2s; }
+#xhair .arc.on { opacity: 1; stroke-width: 3.5; }
+#xhair .a { stroke: var(--jade); } #xhair .b { stroke: var(--verm); }
+#xhair.hold .dot { fill: #fff; r: 4; }
+#prompt { position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%); font: 600 12px var(--mono); letter-spacing: .08em; color: #fff; text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity .15s; white-space: nowrap; }
+#prompt.on { opacity: .92; }
+#prompt kbd { display: inline-block; padding: 1px 6px; margin-right: 6px; border: 1px solid rgba(255,255,255,.7); border-radius: 4px; font: inherit; }
+#stats { position: absolute; right: calc(16px + env(safe-area-inset-right,0px)); top: calc(14px + env(safe-area-inset-top,0px)); font: 500 12px var(--mono); letter-spacing: .06em; text-align: right; color: rgba(255,255,255,.78); text-shadow: 0 1px 2px rgba(0,0,0,.6); line-height: 1.6; }
+#stats b { color: #fff; font-weight: 600; }
+#trialtag { position: absolute; left: calc(16px + env(safe-area-inset-left,0px)); top: calc(14px + env(safe-area-inset-top,0px)); font: 600 12px var(--mono); letter-spacing: .12em; color: rgba(255,255,255,.72); text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+#caption { position: absolute; left: 50%; bottom: calc(64px + env(safe-area-inset-bottom,0px)); transform: translateX(-50%); width: min(760px, calc(100% - 32px)); padding: 12px 18px 13px; background: rgba(10,13,16,.72); border-left: 3px solid var(--jade); border-radius: 3px; font: 400 16px/1.45 var(--sans); color: #f2f4f1; opacity: 0; transition: opacity .35s; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#caption.on { opacity: 1; }
+#caption .who { display: block; font: 600 11px var(--mono); letter-spacing: .2em; color: var(--jade); margin-bottom: 3px; }
+#toast { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); font: 600 13px var(--mono); letter-spacing: .08em; color: #fff; background: rgba(10,13,16,.6); padding: 6px 12px; border-radius: 3px; opacity: 0; transition: opacity .25s; white-space: nowrap; }
+#toast.on { opacity: 1; }
+#card { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); text-align: center; opacity: 0; transition: opacity .6s; }
+#card.on { opacity: 1; }
+#card .num { font: 600 13px var(--mono); letter-spacing: .3em; color: rgba(255,255,255,.75); }
+#card .name { font: 700 38px/1.1 var(--sans); letter-spacing: -.01em; color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.5); margin-top: 4px; }
+#card .icons { margin-top: 10px; display: flex; gap: 8px; justify-content: center; }
+#card .icons canvas { width: 34px; height: 34px; border-radius: 4px; }
+#vign { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(200,20,20,.55)); opacity: 0; transition: opacity .1s; }
+#speedfx { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(255,255,255,.10)); opacity: 0; }
+#fade { position: fixed; inset: 0; background: #06080a; opacity: 1; pointer-events: none; transition: opacity .45s; z-index: 5; }
+#fade.clear { opacity: 0; }
+
+/* ---------- menus ---------- */
+.ov { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: radial-gradient(ellipse at 30% 20%, rgba(13,17,20,.25), rgba(6,8,10,.72)); overflow-y: auto; }
+.panel { width: min(560px, 100%); background: var(--paper); color: var(--ink); border-radius: 6px; padding: 28px 30px 26px; box-shadow: 0 30px 80px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.6); position: relative; }
+.panel.wide { width: min(980px, 100%); }
+.panel h2 { margin: 0 0 4px; font: 700 26px var(--sans); letter-spacing: -.01em; }
+.panel .sub { margin: 0 0 18px; font: 500 12px var(--mono); letter-spacing: .12em; color: rgba(17,22,26,.6); text-transform: uppercase; }
+.panel .rule { height: 1px; background: var(--line); margin: 16px 0; }
+.btns { display: grid; gap: 8px; }
+.btn { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 16px; border: 0; border-radius: 4px; background: #fff; box-shadow: inset 0 0 0 1px var(--line); font: 600 15px var(--sans); color: var(--ink); cursor: pointer; text-align: left; transition: background .15s, box-shadow .15s, transform .08s; }
+.btn:hover, .btn:focus-visible { background: #fff; box-shadow: inset 0 0 0 2px var(--ink); outline: none; }
+.btn:active { transform: translateY(1px); }
+.btn.primary { background: var(--ink); color: #fff; box-shadow: none; }
+.btn.primary:hover, .btn.primary:focus-visible { background: #000; box-shadow: inset 0 0 0 2px var(--jade); }
+.btn small { font: 500 11px var(--mono); letter-spacing: .08em; opacity: .6; }
+.logo { display: flex; align-items: baseline; gap: 14px; margin-bottom: 2px; }
+.logo .han { font: 900 56px/1 var(--han); letter-spacing: .02em; }
+.logo .han i { font-style: normal; }
+.logo .han i:first-child { color: #17a88a; } .logo .han i:last-child { color: #e2431f; }
+.logo .en { font: 700 30px var(--sans); letter-spacing: -.02em; }
+.tagline { margin: 6px 0 20px; font: 400 14px/1.5 var(--sans); color: rgba(17,22,26,.72); }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; font: 500 12px var(--mono); color: rgba(17,22,26,.75); margin-top: 16px; }
+.keys kbd { font: 600 11px var(--mono); padding: 2px 6px; border-radius: 3px; background: #fff; box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); white-space: nowrap; }
+.close-x { position: absolute; right: 14px; top: 12px; border: 0; background: none; font: 600 20px var(--sans); color: rgba(17,22,26,.5); cursor: pointer; padding: 4px 8px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.tcard { position: relative; border: 0; border-radius: 5px; padding: 12px 12px 11px; background: #fff; box-shadow: inset 0 0 0 1px var(--line); text-align: left; cursor: pointer; color: var(--ink); min-height: 112px; display: flex; flex-direction: column; gap: 4px; transition: box-shadow .15s, transform .1s; }
+.tcard:hover, .tcard:focus-visible { box-shadow: inset 0 0 0 2px var(--ink); outline: none; }
+.tcard[disabled] { cursor: not-allowed; opacity: .45; }
+.tcard .n { font: 600 11px var(--mono); letter-spacing: .16em; color: rgba(17,22,26,.55); }
+.tcard .t { font: 700 16px/1.2 var(--sans); }
+.tcard .r { margin-top: auto; font: 500 11px/1.5 var(--mono); color: rgba(17,22,26,.7); }
+.tcard .ok { position: absolute; right: 10px; top: 10px; width: 18px; height: 18px; border-radius: 50%; background: #17a88a; display: grid; place-items: center; color: #fff; font: 700 11px var(--sans); }
+.tcard .ico { display: flex; gap: 4px; }
+.tcard .ico canvas { width: 20px; height: 20px; border-radius: 3px; }
+.tcard.escape { background: #1a1f23; color: #fff; }
+.tcard.escape .n, .tcard.escape .r { color: rgba(255,255,255,.65); }
+.set { display: grid; grid-template-columns: 1fr auto; gap: 12px 16px; align-items: center; font: 500 14px var(--sans); }
+.set input[type=range] { width: 180px; accent-color: var(--ink); }
+.set select { font: 500 13px var(--sans); padding: 5px 8px; border-radius: 4px; border: 1px solid var(--line); background: #fff; }
+.set label { display: contents; }
+.done-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 6px 0 18px; }
+.done-stats div { background: #fff; box-shadow: inset 0 0 0 1px var(--line); border-radius: 4px; padding: 10px 12px; }
+.done-stats dt { font: 600 10px var(--mono); letter-spacing: .14em; color: rgba(17,22,26,.55); text-transform: uppercase; }
+.done-stats dd { margin: 3px 0 0; font: 700 22px var(--sans); }
+.done-stats dd small { font: 500 11px var(--mono); color: #17a88a; margin-left: 4px; }
+.quip { font: 400 14px/1.5 var(--sans); color: rgba(17,22,26,.75); border-left: 3px solid var(--jade); padding: 2px 0 2px 12px; margin: 0 0 18px; }
+#notice .panel { text-align: left; }
+#credits { position: fixed; inset: 0; z-index: 12; background: #070a0c; color: #dfe6e2; display: grid; place-items: center; overflow: hidden; animation: cfade 2.4s ease both; }
+@keyframes cfade { from { opacity: 0; } }
+#credits .roll { width: min(560px, 90%); font: 400 15px/1.7 var(--mono); text-align: center; }
+#credits h3 { font: 700 13px var(--mono); letter-spacing: .3em; color: var(--jade); margin: 28px 0 6px; }
+.muted-ind { position: fixed; right: calc(14px + env(safe-area-inset-right,0px)); bottom: calc(12px + env(safe-area-inset-bottom,0px)); z-index: 11; font: 600 11px var(--mono); letter-spacing: .1em; padding: 6px 10px; border-radius: 999px; background: rgba(13,15,20,.6); color: #fff; border: 0; cursor: pointer; pointer-events: auto; }
+#touch { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+#touch .stick { position: absolute; left: 24px; bottom: 60px; width: 130px; height: 130px; border-radius: 50%; background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); pointer-events: auto; touch-action: none; }
+#touch .knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(255,255,255,.35); }
+#touch .tb { position: absolute; width: 62px; height: 62px; border-radius: 50%; border: 0; font: 700 12px var(--mono); color: #fff; pointer-events: auto; touch-action: none; background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 2px rgba(255,255,255,.3); }
+#touch .tb.a { right: 96px; bottom: 150px; box-shadow: inset 0 0 0 3px var(--jade); }
+#touch .tb.b { right: 24px; bottom: 150px; box-shadow: inset 0 0 0 3px var(--verm); }
+#touch .tb.j { right: 24px; bottom: 60px; } #touch .tb.e { right: 96px; bottom: 60px; }
+#touch .tb.p { right: 24px; top: 20px; width: 46px; height: 46px; }
+#touch .look { position: absolute; left: 40%; right: 0; top: 0; bottom: 0; pointer-events: auto; touch-action: none; }
+/* touch controls hold the bottom corners: the caption sits between them (above them on a portrait phone) and the
+   timer moves below the pause button */
+body.touch #caption { left: 170px; right: 170px; width: auto; transform: none; }
+body.touch #stats { top: calc(74px + env(safe-area-inset-top,0px)); }
+@media (max-height: 500px) { body.touch #caption { font-size: 13px; padding: 8px 12px 9px; } }
+@media (max-width: 600px) {
+  .panel { padding: 22px 18px 20px; }
+  .logo .han { font-size: 44px; } .logo .en { font-size: 24px; }
+  #card .name { font-size: 28px; }
+  #caption { font-size: 14px; bottom: calc(80px + env(safe-area-inset-bottom,0px)); }
+  body.touch #caption { left: 16px; right: 16px; bottom: calc(226px + env(safe-area-inset-bottom,0px)); }
+  .done-stats dd { font-size: 18px; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/",
+  "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+} }
+</script>
+</head>
+<body>
+<canvas id="gl" tabindex="0" aria-label="Twin Gate game view"></canvas>
+
+<div id="hud" hidden>
+  <div id="trialtag"></div>
+  <div id="stats"></div>
+  <div id="xhair" aria-hidden="true"><svg viewBox="-22 -22 44 44">
+    <path class="arc a" d="M -4 -15 A 15 15 0 0 0 -4 15"/>
+    <path class="arc b" d="M 4 -15 A 15 15 0 0 1 4 15"/>
+    <circle class="dot" r="2.2"/></svg></div>
+  <div id="prompt"></div>
+  <div id="toast"></div>
+  <div id="card"><div class="num"></div><div class="name"></div><div class="icons"></div></div>
+  <div id="caption" role="status" aria-live="polite"><span class="who">TALLY</span><span class="txt"></span></div>
+  <div id="vign"></div>
+  <div id="speedfx"></div>
+</div>
+
+<div id="touch" hidden>
+  <div class="look"></div>
+  <div class="stick"><div class="knob"></div></div>
+  <button class="tb a" data-k="fireA">JADE</button><button class="tb b" data-k="fireB">VERM</button>
+  <button class="tb e" data-k="use">USE</button><button class="tb j" data-k="jump">JUMP</button>
+  <button class="tb p" data-k="pause">II</button>
+</div>
+
+<div id="menu" class="ov" hidden>
+  <div class="panel">
+    <div class="logo"><span class="han"><i>双</i><i>门</i></span><span class="en">Twin Gate</span></div>
+    <p class="tagline">Two linked doorways, fifteen trials and one evaluator who is keeping count. Hinge Laboratories thanks you for volunteering.</p>
+    <div class="btns">
+      <button class="btn primary" id="b-continue">Continue <small id="b-continue-sub"></small></button>
+      <button class="btn" id="b-trials">Trials <small id="b-trials-sub"></small></button>
+      <button class="btn" id="b-settings">Settings <small>mouse · sound · quality</small></button>
+      <button class="btn" id="b-demo">Watch the evaluator solve it <small>autoplay</small></button>
+    </div>
+    <div class="keys">
+      <kbd>Mouse</kbd><span>look · left click jade gate · right click vermilion gate</span>
+      <kbd>W A S D</kbd><span>move</span>
+      <kbd>Space</kbd><span>jump</span>
+      <kbd>E</kbd><span>pick up / drop · press switches</span>
+      <kbd>R</kbd><span>restart trial</span>
+      <kbd>Esc</kbd><span>pause</span>
+      <kbd>M</kbd><span>mute</span>
+    </div>
+  </div>
+</div>
+
+<div id="select" class="ov" hidden>
+  <div class="panel wide">
+    <button class="close-x" data-back aria-label="Back">×</button>
+    <h2>Trials</h2>
+    <p class="sub" id="sel-sub"></p>
+    <div class="grid" id="sel-grid"></div>
+  </div>
+</div>
+
+<div id="pause" class="ov" hidden>
+  <div class="panel">
+    <h2>Paused</h2>
+    <p class="sub" id="pause-sub"></p>
+    <div class="btns">
+      <button class="btn primary" id="p-resume">Resume <small>click</small></button>
+      <button class="btn" id="p-restart">Restart trial <small>R</small></button>
+      <button class="btn" id="p-trials">Trial select</button>
+      <button class="btn" id="p-settings">Settings</button>
+      <button class="btn" id="p-menu">Main menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="settings" class="ov" hidden>
+  <div class="panel">
+    <button class="close-x" data-back aria-label="Back">×</button>
+    <h2>Settings</h2>
+    <p class="sub">Saved on this device</p>
+    <div class="set">
+      <label for="s-sens">Mouse sensitivity</label><input id="s-sens" type="range" min="0.2" max="3" step="0.05">
+      <label for="s-fov">Field of view</label><input id="s-fov" type="range" min="60" max="100" step="1">
+      <label for="s-inv">Invert look</label><select id="s-inv"><option value="0">Off</option><option value="1">On</option></select>
+      <label for="s-vol">Master volume</label><input id="s-vol" type="range" min="0" max="1" step="0.05">
+      <label for="s-mus">Music</label><input id="s-mus" type="range" min="0" max="1" step="0.05">
+      <label for="s-q">Quality</label><select id="s-q"><option value="auto">Auto (hold 60 fps)</option><option value="3">High</option><option value="2">Medium</option><option value="1">Low</option></select>
+      <label for="s-bob">View bob</label><select id="s-bob"><option value="1">On</option><option value="0">Off</option></select>
+    </div>
+  </div>
+</div>
+
+<div id="done" class="ov" hidden>
+  <div class="panel">
+    <p class="sub" id="done-num"></p>
+    <h2 id="done-name"></h2>
+    <div class="rule"></div>
+    <dl class="done-stats">
+      <div><dt>Time</dt><dd id="done-time"></dd></div>
+      <div><dt>Gates</dt><dd id="done-gates"></dd></div>
+      <div><dt>Trials</dt><dd id="done-count"></dd></div>
+    </dl>
+    <p class="quip" id="done-quip"></p>
+    <div class="btns">
+      <button class="btn primary" id="d-next">Next trial <small>Enter</small></button>
+      <button class="btn" id="d-retry">Retry for a better record</button>
+      <button class="btn" id="d-trials">Trial select</button>
+    </div>
+  </div>
+</div>
+
+<div id="notice" class="ov" hidden>
+  <div class="panel">
+    <div class="logo"><span class="han"><i>双</i><i>门</i></span><span class="en">Twin Gate</span></div>
+    <p class="tagline"><b>Twin Gate is built for a keyboard and mouse.</b> Aiming two gates with a thumb is possible but not pleasant. You can try the touch controls anyway, or watch the evaluator play every trial.</p>
+    <div class="btns">
+      <button class="btn primary" id="n-demo">Watch the autoplay</button>
+      <button class="btn" id="n-touch">Try touch controls</button>
+    </div>
+  </div>
+</div>
+
+<div id="credits" hidden><div class="roll" id="roll"></div></div>
+<button class="muted-ind" id="mute" type="button" aria-pressed="false">SOUND ON</button>
+<div id="fade"></div>
+
+<script src="../../arcade/page.js" data-game="twin-gate"></script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

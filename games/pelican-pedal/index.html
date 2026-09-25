@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pelican Pedal</title>
+<meta name="description" content="A great white pelican rides a red roadster round a Mediterranean island: a real-time 3D showcase with a cinematic director, a full day-night cycle, photo mode and a gentle scoop-the-fish game.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,600;1,9..144,800&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --panel: rgba(20, 16, 28, .56);
+    --line: rgba(255, 255, 255, .16);
+    --cream: #FFF6EA;
+    --muted: #D8CFD6;
+    --sun: #FFBE6A;
+    --coral: #FF7A66;
+    --sea: #5FD4C8;
+    --display: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-l: env(safe-area-inset-left, 0px); --safe-r: env(safe-area-inset-right, 0px);
+  }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #140e1c; color: var(--cream); font-family: var(--body); -webkit-font-smoothing: antialiased; }
+  body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--sea); outline-offset: 3px; }
+  [hidden] { display: none !important; }
+  .glass { background: var(--panel); box-shadow: inset 0 0 0 1px var(--line), 0 10px 40px rgba(0,0,0,.18); backdrop-filter: blur(12px) saturate(1.25); -webkit-backdrop-filter: blur(12px) saturate(1.25); }
+
+  /* letterbox for the opening crane shot */
+  .bar { position: fixed; left: 0; right: 0; height: 0; background: #07050a; pointer-events: none; transition: height 1.2s cubic-bezier(.6,0,.2,1); z-index: 3; }
+  #bar-t { top: 0; } #bar-b { bottom: 0; }
+  body.cine .bar { height: 8vh; }
+
+  /* loading veil */
+  #veil { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: radial-gradient(120% 90% at 50% 100%, #3a2140 0%, #140e1c 60%); transition: opacity 1s ease; }
+  #veil.gone { opacity: 0; pointer-events: none; }
+  #veil .inner { text-align: center; }
+  #veil h1 { font-family: var(--display); font-style: italic; font-weight: 800; font-size: clamp(34px, 7vw, 64px); margin: 0 0 12px; background: linear-gradient(180deg, #FFE6A6, #FF9E6A 70%, #FF6E6E); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #veil p { color: var(--muted); margin: 0; font-size: 14px; letter-spacing: .06em; }
+  #veil .track { width: 220px; height: 3px; margin: 18px auto 0; background: rgba(255,255,255,.12); border-radius: 3px; overflow: hidden; }
+  #veil .fill { height: 100%; width: 10%; background: linear-gradient(90deg, var(--sun), var(--coral)); transition: width .4s ease; }
+  #err { color: #FFB0B0; font-size: 14px; max-width: 420px; margin: 16px auto 0; }
+
+  /* title card */
+  #title { position: fixed; z-index: 6; left: calc(28px + var(--safe-l)); bottom: calc(30px + var(--safe-b)); width: min(400px, calc(100vw - 56px)); border-radius: 24px; padding: 24px 24px 20px; transition: opacity .7s, transform .7s; }
+  #title h1 { margin: 0; font-family: var(--display); font-style: italic; font-weight: 800; font-size: clamp(36px, 5.4vw, 52px); line-height: .95; letter-spacing: -.01em; background: linear-gradient(180deg, #FFE7A8 0%, #FFB464 55%, #FF7862 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 0 rgba(90, 30, 50, .45)); }
+  #title .tag { margin: 10px 0 16px; color: var(--muted); font-size: 14.5px; line-height: 1.5; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .btn { border: 0; border-radius: 14px; padding: 12px 20px; font-weight: 700; font-size: 15px; transition: transform .08s, filter .2s; }
+  .btn:active { transform: translateY(2px); }
+  .btn.primary { color: #2a0f1f; background: linear-gradient(180deg, #FFD684, #FF9460); box-shadow: 0 4px 0 #B34C5A, 0 10px 26px rgba(255, 120, 90, .3); font-size: 16px; padding: 12px 26px; }
+  .btn.ghost { background: rgba(255, 255, 255, .09); box-shadow: inset 0 0 0 1px var(--line); }
+  .btn:hover { filter: brightness(1.08); }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; font-size: 12.5px; margin: 16px 0 0; color: var(--muted); align-items: center; }
+  .keys dt { white-space: nowrap; } .keys dd { margin: 0; }
+  kbd { display: inline-block; min-width: 16px; padding: 1px 5px; margin-right: 2px; border-radius: 5px; background: rgba(255, 255, 255, .1); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .35), inset 0 0 0 1px var(--line); font: 600 11px var(--body); text-align: center; color: var(--cream); }
+  .meta { margin-top: 14px; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; gap: 16px; }
+  .meta b { font-family: var(--display); font-weight: 600; color: var(--sun); font-size: 17px; letter-spacing: 0; margin-left: 6px; }
+  .touch-note { display: none; font-size: 12.5px; color: var(--muted); margin: 14px 0 0; }
+  body.touch .keys { display: none; } body.touch .touch-note { display: block; }
+  body.playing #title, body.photo #title, body.watch #title { opacity: 0; transform: translateY(12px); pointer-events: none; }
+
+  /* HUD */
+  #hud { position: fixed; z-index: 5; top: calc(12px + var(--safe-t)); left: calc(12px + var(--safe-l)); display: flex; gap: 6px; pointer-events: none; opacity: 0; transition: opacity .6s; }
+  body.playing #hud { opacity: 1; }
+  .chip { border-radius: 14px; padding: 6px 12px 7px; min-width: 52px; }
+  .chip span { display: block; font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .chip b { display: block; font-family: var(--display); font-weight: 600; font-size: 19px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .chip.score b { color: var(--sun); }
+  .chip.combo b { color: var(--coral); }
+  #clock { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%); top: calc(12px + var(--safe-t)); border-radius: 999px; padding: 6px 14px 6px 10px; display: flex; gap: 8px; align-items: center; font-size: 13px; font-variant-numeric: tabular-nums; pointer-events: none; transition: opacity .6s; }
+  #clock i { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 40% 40%, #FFE9A0, #FF9A4A); box-shadow: 0 0 12px rgba(255, 170, 80, .7); }
+  #clock.moon i { background: radial-gradient(circle at 40% 40%, #F4F0FF, #9CA8D8); box-shadow: 0 0 12px rgba(170, 190, 255, .6); }
+  #clock em { font-style: normal; color: var(--muted); }
+  body.photo #clock, body.photo #zone, body.hide-hud #clock, body.hide-hud #hud { opacity: 0; }
+  #shotname { position: fixed; z-index: 5; right: calc(16px + var(--safe-r)); bottom: calc(16px + var(--safe-b)); font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: rgba(255, 246, 234, .6); pointer-events: none; transition: opacity .4s; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
+  body.touch.playing #shotname { bottom: auto; top: calc(112px + var(--safe-t)); }
+  @media (max-width: 560px) { body.playing #shotname { display: none; } }
+
+  /* tools */
+  #tools { position: fixed; z-index: 8; top: calc(12px + var(--safe-t)); right: calc(12px + var(--safe-r)); display: flex; gap: 6px; }
+  .ibtn { width: 42px; height: 42px; border: 0; border-radius: 13px; display: grid; place-items: center; }
+  .ibtn:hover { background: rgba(70, 50, 90, .7); }
+  .ibtn[aria-pressed="true"] { background: rgba(255, 190, 106, .38); }
+  .ibtn svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  body.photo #tools .hide-photo { display: none; }
+
+  /* toasts */
+  #toast { position: fixed; z-index: 7; left: 50%; top: 21%; transform: translate(-50%, 8px); font-family: var(--display); font-style: italic; font-weight: 800; font-size: clamp(24px, 4.6vw, 42px); color: var(--cream); text-shadow: 0 3px 0 rgba(80, 25, 50, .55), 0 0 26px rgba(255, 170, 90, .55); pointer-events: none; opacity: 0; transition: opacity .25s, transform .25s; white-space: nowrap; }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
+  #toast small { display: block; text-align: center; font-family: var(--body); font-style: normal; font-weight: 700; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: var(--sun); text-shadow: 0 1px 8px rgba(0,0,0,.4); }
+  #zone { position: fixed; z-index: 5; left: 50%; top: calc(60px + var(--safe-t)); transform: translateX(-50%); font-family: var(--display); font-style: italic; font-size: 22px; opacity: 0; transition: opacity .8s; pointer-events: none; text-shadow: 0 2px 14px rgba(0,0,0,.45); white-space: nowrap; }
+  #zone.on { opacity: .95; }
+  #achtoast { position: fixed; z-index: 9; right: calc(14px + var(--safe-r)); top: calc(64px + var(--safe-t)); border-radius: 16px; padding: 10px 16px 10px 12px; display: flex; gap: 10px; align-items: center; transform: translateX(120%); transition: transform .5s cubic-bezier(.2,.9,.2,1.1); max-width: 300px; }
+  #achtoast.on { transform: translateX(0); }
+  #achtoast .ic { font-size: 26px; }
+  #achtoast small { display: block; font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: var(--sun); }
+  #achtoast b { font-family: var(--display); font-size: 17px; font-weight: 600; }
+
+  /* panels */
+  .modal { position: fixed; z-index: 12; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; background: rgba(10, 6, 16, .45); }
+  .modal .card { border-radius: 22px; padding: 20px 22px; width: min(720px, 100%); max-height: 100%; box-sizing: border-box; overflow: auto; }
+  /* the arcade's "← Games" pill would sit over the bottom of a dialog on phones; dialogs have their own buttons */
+  body:has(.modal:not([hidden])) a[href="../../"] { display: none !important; }
+  .modal h2 { margin: 0 0 12px; font-family: var(--display); font-style: italic; font-size: 28px; }
+  .achgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px; }
+  .ach { border-radius: 14px; padding: 10px; background: rgba(255,255,255,.06); box-shadow: inset 0 0 0 1px var(--line); opacity: .5; }
+  .ach.got { opacity: 1; background: rgba(255, 190, 106, .14); box-shadow: inset 0 0 0 1px rgba(255, 190, 106, .5); }
+  .ach .ic { font-size: 22px; } .ach b { display: block; font-size: 13.5px; margin-top: 4px; } .ach span { font-size: 12px; color: var(--muted); }
+  .opts { display: grid; gap: 10px; margin: 8px 0 16px; font-size: 14px; }
+  .opts label { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  select { background: rgba(255,255,255,.1); border: 0; border-radius: 10px; padding: 6px 10px; box-shadow: inset 0 0 0 1px var(--line); }
+  select option { color: #111; }
+
+  /* photo mode */
+  #photo { position: fixed; z-index: 8; left: 50%; transform: translateX(-50%); bottom: calc(14px + var(--safe-b)); border-radius: 20px; padding: 12px 14px; width: min(760px, calc(100vw - 24px)); display: grid; gap: 10px; }
+  #photo .sliders { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 14px; }
+  #photo label { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: grid; gap: 4px; }
+  #photo label output { color: var(--cream); letter-spacing: 0; text-transform: none; font-size: 12px; float: right; }
+  input[type=range] { width: 100%; accent-color: var(--sun); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .fchip { border: 0; border-radius: 999px; padding: 6px 12px; background: rgba(255,255,255,.09); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; }
+  .fchip[aria-pressed="true"] { background: rgba(255, 190, 106, .35); box-shadow: inset 0 0 0 1px rgba(255,190,106,.7); }
+  #photo .hint { font-size: 12px; color: var(--muted); }
+  @media (max-width: 640px) { #photo .sliders { grid-template-columns: repeat(2, 1fr); } }
+  #flash { position: fixed; inset: 0; z-index: 30; background: #fff; opacity: 0; pointer-events: none; transition: opacity .5s; }
+  #flash.on { opacity: .85; transition: none; }
+
+  /* touch controls */
+  #touch { position: fixed; z-index: 7; inset: auto 0 0 0; height: 0; display: none; }
+  body.touch.playing #touch { display: block; }
+  .tb { position: fixed; border: 0; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; letter-spacing: .04em; color: var(--cream); background: rgba(20, 14, 30, .5); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.28); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); touch-action: none; }
+  .tb.on { background: rgba(255, 190, 106, .45); }
+  #t-left { left: calc(14px + var(--safe-l)); bottom: calc(22px + var(--safe-b)); width: 74px; height: 74px; font-size: 26px; }
+  #t-right { left: calc(98px + var(--safe-l)); bottom: calc(22px + var(--safe-b)); width: 74px; height: 74px; font-size: 26px; }
+  #t-pedal { right: calc(16px + var(--safe-r)); bottom: calc(22px + var(--safe-b)); width: 96px; height: 96px; font-size: 14px; }
+  #t-brake { right: calc(122px + var(--safe-r)); bottom: calc(18px + var(--safe-b)); width: 58px; height: 58px; }
+  #t-hop { right: calc(122px + var(--safe-r)); bottom: calc(86px + var(--safe-b)); width: 58px; height: 58px; }
+  #t-scoop { right: calc(20px + var(--safe-r)); bottom: calc(128px + var(--safe-b)); width: 62px; height: 62px; }
+  #t-wings { right: calc(88px + var(--safe-r)); bottom: calc(150px + var(--safe-b)); width: 58px; height: 58px; }
+  #t-bell { left: calc(20px + var(--safe-l)); bottom: calc(108px + var(--safe-b)); width: 50px; height: 50px; font-size: 20px; }
+  @media (max-width: 560px) {
+    #title { left: 12px; right: 12px; width: auto; bottom: calc(52px + var(--safe-b)); padding: 18px; }
+    #hud { top: calc(62px + var(--safe-t)); }
+    .chip { padding: 5px 9px 6px; min-width: 40px; } .chip b { font-size: 16px; }
+    #clock { top: calc(64px + var(--safe-t)); }
+    body.playing #clock { opacity: 0; }
+    #photo { bottom: calc(52px + var(--safe-b)); }
+    #t-left, #t-right { bottom: calc(58px + var(--safe-b)); }
+    #t-bell { bottom: calc(142px + var(--safe-b)); }
+  }
+  @media (prefers-reduced-motion: reduce) { .bar, #title, #toast, #achtoast { transition: none; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div class="bar" id="bar-t"></div><div class="bar" id="bar-b"></div>
+
+<div id="veil" role="status" aria-live="polite">
+  <div class="inner">
+    <h1>Pelican Pedal</h1>
+    <p id="veil-msg">Sculpting feathers…</p>
+    <div class="track"><div class="fill" id="veil-fill"></div></div>
+    <p id="err" hidden></p>
+  </div>
+</div>
+
+<section id="title" class="glass" aria-labelledby="title-h">
+  <h1 id="title-h">Pelican Pedal</h1>
+  <p class="tag">A great white pelican, a cherry-red roadster and an island road at golden hour. Scoop flying fish with your pouch, hop the crabs, and ride on into the night.</p>
+  <div class="row">
+    <button class="btn primary" id="b-ride">Ride</button>
+    <button class="btn ghost" id="b-watch">Watch</button>
+    <button class="btn ghost" id="b-photo">Photo mode</button>
+  </div>
+  <dl class="keys">
+    <dt><kbd>W</kbd><kbd>S</kbd></dt><dd>pedal · brake</dd>
+    <dt><kbd>A</kbd><kbd>D</kbd></dt><dd>steer across the lanes</dd>
+    <dt><kbd>F</kbd></dt><dd>hold the pouch wide (bigger scoop, more drag)</dd>
+    <dt><kbd>Space</kbd> <kbd>Shift</kbd></dt><dd>hop · wing-lift wheelie (hold)</dd>
+    <dt><kbd>B</kbd> <kbd>C</kbd> <kbd>P</kbd></dt><dd>bell · camera · photo mode</dd>
+  </dl>
+  <p class="touch-note">Hold <b>Pedal</b> and steer ◀ ▶ through the lines of fish; <b>Hop</b> the high arcs. Drag the view in Orbit and Photo modes.</p>
+  <div class="meta"><span>Best<b id="best">0</b></span><span>Trophies<b id="trophies">0/16</b></span></div>
+</section>
+
+<div id="hud" aria-live="off">
+  <div class="chip glass score"><span>Score</span><b id="h-score">0</b></div>
+  <div class="chip glass combo"><span>Combo</span><b id="h-combo">×0</b></div>
+  <div class="chip glass"><span>Fish</span><b id="h-fish">0</b></div>
+  <div class="chip glass"><span>km/h</span><b id="h-speed">0</b></div>
+</div>
+<div id="clock" class="glass" aria-hidden="true"><i></i><span id="c-time">18:12</span><em id="c-phase">Golden hour</em></div>
+<div id="zone" aria-live="polite"></div>
+<div id="shotname" aria-hidden="true"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="achtoast" class="glass" role="status" aria-live="polite"><span class="ic"></span><div><small>Achievement</small><b></b></div></div>
+
+<nav id="tools" aria-label="View and sound">
+  <button class="ibtn glass" id="t-cam" aria-label="Change camera (C)" title="Camera (C)"><svg viewBox="0 0 24 24"><path d="M3 8h3l2-3h8l2 3h3v11H3z"/><circle cx="12" cy="13" r="4"/></svg></button>
+  <button class="ibtn glass" id="t-photo" aria-label="Photo mode (P)" aria-pressed="false" title="Photo mode (P)"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/></svg></button>
+  <button class="ibtn glass hide-photo" id="t-ach" aria-label="Achievements" title="Achievements"><svg viewBox="0 0 24 24"><path d="M8 4h8v4a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 12v4M8 20h8M10 16h4v4h-4z"/></svg></button>
+  <button class="ibtn glass" id="t-sound" aria-label="Sound on" aria-pressed="true" title="Sound (M)"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg></button>
+  <button class="ibtn glass hide-photo" id="t-menu" aria-label="Pause and settings (Esc)" title="Pause (Esc)"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg></button>
+</nav>
+
+<div id="photo" class="glass" hidden aria-label="Photo mode">
+  <div class="sliders">
+    <label>Focus <output id="o-focus">auto</output><input type="range" id="p-focus" min="0" max="100" value="0" aria-label="Focus distance (0 = auto on the pelican)"></label>
+    <label>Aperture <output id="o-ap">f/2.8</output><input type="range" id="p-ap" min="0" max="100" value="55" aria-label="Aperture"></label>
+    <label>Time of day <output id="o-time">18:12</output><input type="range" id="p-time" min="0" max="1440" value="1092" aria-label="Time of day"></label>
+    <label>Exposure <output id="o-exp">0</output><input type="range" id="p-exp" min="-100" max="100" value="0" aria-label="Exposure"></label>
+  </div>
+  <div class="row" style="justify-content: space-between">
+    <div class="chips" role="group" aria-label="Filter">
+      <button class="fchip" data-f="0" aria-pressed="true">Natural</button>
+      <button class="fchip" data-f="1" aria-pressed="false">Golden film</button>
+      <button class="fchip" data-f="2" aria-pressed="false">Noir</button>
+      <button class="fchip" data-f="3" aria-pressed="false">Vintage</button>
+      <button class="fchip" data-f="4" aria-pressed="false">Pastel</button>
+    </div>
+    <div class="row">
+      <button class="btn ghost" id="p-hide">Hide panel</button>
+      <button class="btn primary" id="p-shot">Save photo</button>
+      <button class="btn ghost" id="p-exit">Done</button>
+    </div>
+  </div>
+  <div class="hint" id="p-hint">Drag to look · WASD to move · Q/E down/up · Shift faster · wheel to zoom · H hides this panel</div>
+</div>
+<div id="flash"></div>
+
+<div id="ach-modal" class="modal" hidden><div class="card glass" role="dialog" aria-modal="true" aria-labelledby="ach-h"><h2 id="ach-h">Achievements</h2><div class="achgrid" id="ach-grid"></div><div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn ghost" id="ach-close">Close</button></div></div></div>
+<div id="pause" class="modal" hidden><div class="card glass" role="dialog" aria-modal="true" aria-labelledby="pause-h">
+  <h2 id="pause-h">Paused</h2>
+  <div class="opts">
+    <label>Graphics quality <select id="o-quality"><option value="auto">Auto</option><option value="3">Ultra</option><option value="2">High</option><option value="1">Medium</option><option value="0">Low</option></select></label>
+    <label>Camera <select id="o-camera"><option value="director">Director</option><option value="chase">Chase</option><option value="side">Side</option><option value="orbit">Orbit</option><option value="pov">Pelican POV</option></select></label>
+    <label>Day length <select id="o-day"><option value="6">6 min</option><option value="12" selected>12 min</option><option value="30">30 min</option><option value="0">Stop the clock</option></select></label>
+  </div>
+  <div class="row"><button class="btn primary" id="p-resume">Resume</button><button class="btn ghost" id="p-end">End ride</button></div>
+</div></div>
+<div id="summary" class="modal" hidden><div class="card glass" role="dialog" aria-modal="true" aria-labelledby="sum-h">
+  <h2 id="sum-h">Ride complete</h2>
+  <p id="sum-body" style="color:var(--muted);line-height:1.6;margin:0 0 14px"></p>
+  <div class="row"><button class="btn primary" id="sum-again">Ride again</button><button class="btn ghost" id="sum-close">Back to the view</button></div>
+</div></div>
+
+<div id="touch" aria-hidden="true">
+  <button class="tb" id="t-left" data-k="left">◀</button>
+  <button class="tb" id="t-right" data-k="right">▶</button>
+  <button class="tb" id="t-bell" data-k="bell">🔔</button>
+  <button class="tb" id="t-pedal" data-k="pedal">PEDAL</button>
+  <button class="tb" id="t-brake" data-k="brake">BRAKE</button>
+  <button class="tb" id="t-hop" data-k="hop">HOP</button>
+  <button class="tb" id="t-scoop" data-k="scoop">SCOOP</button>
+  <button class="tb" id="t-wings" data-k="trick">WINGS</button>
+</div>
+
+<script src="../../arcade/page.js" data-game="pelican-pedal"></script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

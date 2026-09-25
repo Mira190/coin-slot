@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0f1a">
+<title>Cargo Deck</title>
+<meta name="description" content="Cargo Deck: a 5v5 team shooter on a moored container freighter. Team deathmatch and elimination rounds against bots.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@500;600;700&family=Rubik:wght@400;500;700;900&display=swap">
+<style>
+:root{--ink:#eef1f6;--dim:#9aa4b5;--blue:#4aa3ff;--red:#ff5a4a;--amber:#ffb347;--green:#62f0a0;--panel:rgba(10,14,24,.72);--line:rgba(255,255,255,.14)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#0b0f1a;color:var(--ink);font:500 15px Rubik,system-ui,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{display:block}
+[hidden]{display:none!important}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+button{font:inherit;color:inherit}
+/* ---------------------------------------------------------------- overlays / menus */
+.ov{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:max(14px,env(safe-area-inset-top)) 14px 14px;
+  background:radial-gradient(ellipse at 50% 20%,rgba(30,40,70,.35),rgba(6,8,16,.82))}
+.card{width:min(780px,100%);max-height:calc(100% - 20px);overflow:auto;background:var(--panel);border-radius:18px;padding:24px 24px 20px;
+  box-shadow:inset 0 0 0 1px var(--line),0 30px 80px rgba(0,0,0,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.card.narrow{width:min(460px,100%)}
+h1{font:400 clamp(40px,9vw,72px)/.95 Bungee,sans-serif;margin:0 0 4px;letter-spacing:.01em;
+  background:linear-gradient(180deg,#ffe0a3 0%,#ff9a4a 55%,#e0572a 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 rgba(0,0,0,.35))}
+h2{font:400 26px Bungee,sans-serif;margin:0 0 10px}
+h3{font:700 12px "IBM Plex Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:16px 0 8px}
+.sub{color:var(--dim);margin:0 0 14px;line-height:1.5}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{font:400 18px Bungee,sans-serif;border:0;border-radius:12px;padding:12px 26px;cursor:pointer;color:#1b1206;
+  background:linear-gradient(180deg,#ffd08a,#ff8a4c);box-shadow:0 5px 0 #a4462a,0 10px 24px rgba(255,120,60,.25);transition:transform .08s}
+.btn:hover{filter:brightness(1.06)}.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #a4462a}
+.btn.ghost{background:rgba(255,255,255,.08);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);font:600 14px Rubik}
+.btn:focus-visible,.opt:focus-visible,.seg button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.seg{display:inline-flex;background:rgba(255,255,255,.06);border-radius:11px;padding:3px;box-shadow:inset 0 0 0 1px var(--line);flex-wrap:wrap}
+.seg button{border:0;background:none;padding:8px 14px;border-radius:9px;cursor:pointer;font:600 13px Rubik;color:var(--dim)}
+.seg button[aria-pressed=true]{background:rgba(255,179,71,.18);color:#ffd9a0;box-shadow:inset 0 0 0 1px rgba(255,179,71,.5)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px}
+.opt{border:0;text-align:left;background:rgba(255,255,255,.05);border-radius:12px;padding:10px 12px;cursor:pointer;box-shadow:inset 0 0 0 1px var(--line);color:var(--ink)}
+.opt b{display:block;font:700 14px Rubik}.opt span{display:block;font:500 11px "IBM Plex Mono",monospace;color:var(--dim);margin-top:3px}
+.opt canvas{width:100%;height:38px;margin-bottom:4px}
+.opt[aria-pressed=true]{background:rgba(74,163,255,.14);box-shadow:inset 0 0 0 2px var(--blue)}
+.keys{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:5px 12px;font-size:13px;color:var(--dim)}
+.keys b{font:600 11px "IBM Plex Mono",monospace;background:rgba(255,255,255,.1);color:var(--ink);border-radius:6px;padding:2px 7px;white-space:nowrap;justify-self:start}
+.best{font:600 13px "IBM Plex Mono",monospace;color:var(--amber)}
+.note{background:rgba(255,179,71,.12);border-radius:10px;padding:9px 12px;margin:0 0 12px;color:#ffe2b8;font-size:13px}
+/* Deploy stays visible at the bottom of the menu card however tall it gets; controls fold away */
+.deploy{position:sticky;bottom:-20px;margin:18px -24px -20px;padding:14px 24px 18px;background:linear-gradient(180deg,rgba(14,19,32,0),rgba(14,19,32,.96) 30%)}
+.ctl summary{cursor:pointer;list-style:none}.ctl summary::-webkit-details-marker{display:none}
+.ctl summary h3::after{content:" \25B8"}.ctl[open] summary h3::after{content:" \25BE"}
+.set{display:grid;grid-template-columns:150px 1fr 48px;gap:10px 12px;align-items:center;font-size:14px}
+.set output{font:600 12px "IBM Plex Mono",monospace;color:var(--amber);text-align:right}
+input[type=range]{width:100%;accent-color:var(--amber)}
+#back{position:fixed;left:calc(12px + env(safe-area-inset-left));bottom:calc(12px + env(safe-area-inset-bottom));z-index:60;padding:6px 12px;border-radius:999px;
+  background:rgba(13,15,34,.72);color:#ECEAFF;font:600 13px system-ui,sans-serif;text-decoration:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+#loading{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0b0f1a}
+#loading .bar{width:min(320px,70vw);height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+#loading .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff9a4a,#ffd08a);transition:width .2s}
+#loading p{font:600 12px "IBM Plex Mono",monospace;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;margin:0}
+/* ---------------------------------------------------------------- HUD */
+#hud{position:fixed;inset:0;z-index:10;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.pnl{background:var(--panel);border-radius:12px;box-shadow:inset 0 0 0 1px var(--line);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#top{position:absolute;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:flex;align-items:stretch;overflow:hidden}
+#top .t{display:flex;align-items:center;gap:8px;padding:5px 14px;font:700 22px "IBM Plex Mono",monospace}
+#top .t0{background:linear-gradient(90deg,rgba(74,163,255,.05),rgba(74,163,255,.32));color:#d6ebff}
+#top .t1{background:linear-gradient(270deg,rgba(255,90,74,.05),rgba(255,90,74,.32));color:#ffdcd6}
+#top .t small{font:600 10px Rubik;letter-spacing:.12em;opacity:.75}
+#top .mid{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px 14px;min-width:92px}
+#clock{font:700 19px "IBM Plex Mono",monospace}
+#goal{font:600 9px Rubik;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;white-space:nowrap}
+#alive{position:absolute;top:calc(max(10px,env(safe-area-inset-top)) + 50px);left:50%;transform:translateX(-50%);display:flex;gap:18px;font:600 11px "IBM Plex Mono",monospace}
+#alive span{display:flex;gap:3px}#alive i{width:7px;height:12px;border-radius:2px;background:currentColor;opacity:.9}#alive i.dead{opacity:.2}
+#feed{position:absolute;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+#feed>div{display:flex;align-items:center;gap:7px;background:rgba(8,10,18,.66);padding:4px 10px;border-radius:8px;font:600 13px Rubik;transition:opacity .5s,transform .3s;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+#feed>div.me{box-shadow:inset 0 0 0 1.5px rgba(255,200,110,.85);background:rgba(40,26,8,.7)}
+#feed .b{color:#8cc8ff}#feed .r{color:#ff9d90}
+#feed canvas{height:18px;width:54px}
+#feed .hs,#feed .wb{font:700 9px "IBM Plex Mono",monospace;padding:2px 4px;border-radius:4px;background:rgba(255,179,71,.25);color:#ffd08a}
+#feed .wb{background:rgba(120,200,255,.2);color:#bfe6ff}
+#radar{position:absolute;top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));width:176px;height:176px;border-radius:50%;overflow:hidden}
+#radar canvas{width:100%;height:100%}
+#zone{position:absolute;top:calc(max(12px,env(safe-area-inset-top)) + 182px);left:max(12px,env(safe-area-inset-left));width:176px;text-align:center;font:600 11px "IBM Plex Mono",monospace;letter-spacing:.08em;color:#cfe4ff;text-transform:uppercase}
+#radio{position:absolute;top:calc(max(12px,env(safe-area-inset-top)) + 204px);left:max(12px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:3px;max-width:280px}
+#radio div{font:600 12px Rubik;padding:3px 8px;border-radius:6px;background:rgba(10,20,40,.55);color:#bfe0ff;transition:opacity .6s}
+#radio div b{color:#8cc8ff}#radio div.en b{color:#ff9d90}
+#vitals{position:absolute;left:max(14px,env(safe-area-inset-left));bottom:max(14px,env(safe-area-inset-bottom));display:flex;align-items:center;gap:12px;padding:9px 16px}
+#hpn{font:700 30px "IBM Plex Mono",monospace;min-width:58px;text-align:right}
+#hpbar{width:150px;height:8px;background:rgba(255,255,255,.12);border-radius:4px;overflow:hidden;position:relative}
+#hpbar i{position:absolute;inset:0;width:100%;background:linear-gradient(90deg,#4ce08e,#b8ff6a);transition:width .15s}
+#hpbar u{position:absolute;inset:0;width:100%;background:rgba(255,255,255,.35);transition:width .6s .25s}
+#vitals.low #hpbar i{background:#ff4a3a}#vitals.low #hpn{color:#ff8070}
+#vitals .ico{width:18px;height:18px;opacity:.8}
+#streak{font:700 11px "IBM Plex Mono",monospace;color:var(--amber);margin-left:4px}
+#ammo{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));padding:9px 16px;text-align:right;min-width:210px}
+#wname{font:700 11px "IBM Plex Mono",monospace;color:var(--dim);letter-spacing:.14em;text-transform:uppercase}
+#mag{font:700 38px "IBM Plex Mono",monospace;line-height:1}#res{font:600 17px "IBM Plex Mono",monospace;color:var(--dim)}
+#mag.low{color:#ff8070}
+#nades{display:flex;gap:8px;justify-content:flex-end;margin-top:4px;font:600 11px "IBM Plex Mono",monospace;color:var(--dim)}
+#nades span.on{color:var(--amber)}
+#slots{display:flex;gap:6px;justify-content:flex-end;margin-top:5px}
+#slots div{font:700 10px "IBM Plex Mono",monospace;color:#7c8598;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.05)}
+#slots div.on{color:#1b1206;background:var(--amber)}
+#reloadbar{position:absolute;left:50%;top:calc(50% + 46px);transform:translateX(-50%);width:120px;height:4px;border-radius:2px;background:rgba(255,255,255,.15);overflow:hidden}
+#reloadbar i{display:block;height:100%;width:0;background:var(--amber)}
+#xh{position:absolute;left:50%;top:50%;width:0;height:0;transition:opacity .12s}
+#xh i{position:absolute;background:var(--xh,#7dffb4);box-shadow:0 0 0 1px rgba(0,0,0,.55)}
+#xh .u,#xh .d{width:2px;height:9px;left:-1px}#xh .l,#xh .r{height:2px;width:9px;top:-1px}
+#xh .dot{width:2px;height:2px;left:-1px;top:-1px}
+#xh.knife .u,#xh.knife .d,#xh.knife .l,#xh.knife .r{opacity:.35}
+#hm{position:absolute;left:50%;top:50%;width:0;height:0;opacity:0}
+#hm i{position:absolute;width:2px;height:11px;background:#fff;left:-1px;top:-5px;box-shadow:0 0 2px #000}
+#hm.hs i{background:#ff4a3a;height:14px}#hm.kill i{background:#ff2a1a;width:3px}
+#dmg{position:absolute;left:50%;top:50%;width:0;height:0}
+#dmg div{position:absolute;left:-90px;top:-90px;width:180px;height:180px;border-radius:50%;
+  background:conic-gradient(from -18deg,rgba(255,40,30,.95) 0 36deg,transparent 36deg);-webkit-mask:radial-gradient(circle,transparent 76px,#000 78px,#000 88px,transparent 90px);mask:radial-gradient(circle,transparent 76px,#000 78px,#000 88px,transparent 90px);transition:opacity .9s}
+#center{position:absolute;left:50%;top:23%;transform:translateX(-50%);text-align:center}
+#banner{font:400 clamp(26px,5vw,46px)/1 Bungee;letter-spacing:.02em;opacity:0;transform:scale(.8);transition:opacity .25s,transform .25s;
+  background:linear-gradient(180deg,#fff2d0,#ffb347 60%,#ff7a2a);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 3px 0 rgba(0,0,0,.45))}
+#banner.show{opacity:1;transform:scale(1)}
+#medals{display:flex;gap:10px;justify-content:center;margin-top:8px}
+#medals .m{display:flex;flex-direction:column;align-items:center;gap:3px;animation:medal .45s cubic-bezier(.2,1.6,.4,1) both}
+#medals .m canvas{width:62px;height:62px}
+#medals .m b{font:700 10px "IBM Plex Mono",monospace;letter-spacing:.12em;color:#ffe6b8;text-transform:uppercase}
+#medals .m em{font:700 11px "IBM Plex Mono",monospace;color:var(--amber);font-style:normal}
+@keyframes medal{from{opacity:0;transform:translateY(12px) scale(.4)}to{opacity:1;transform:none}}
+#msg{position:absolute;left:50%;top:62%;transform:translateX(-50%);font:700 15px Rubik;color:#ffe2b8;letter-spacing:.06em;text-align:center;white-space:nowrap}
+#msg small{display:block;font:600 11px "IBM Plex Mono",monospace;color:var(--dim);margin-top:4px}
+#bigmsg{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity .3s}
+#bigmsg.show{opacity:1}
+#bigmsg b{display:block;font:400 clamp(30px,7vw,64px)/1 Bungee}#bigmsg span{display:block;font:600 14px "IBM Plex Mono",monospace;color:var(--dim);margin-top:8px;letter-spacing:.1em}
+#vig{position:absolute;inset:0;box-shadow:inset 0 0 180px 60px rgba(170,0,0,.85);opacity:0}
+#flash{position:absolute;inset:0;background:#fff;opacity:0}
+#scope{position:absolute;inset:0}
+#scope svg{position:absolute;inset:0;width:100%;height:100%}
+#spawnp{position:absolute;left:50%;top:calc(50% + 70px);transform:translateX(-50%);font:600 11px "IBM Plex Mono",monospace;color:#9fd8ff;letter-spacing:.12em}
+#pickup{position:absolute;left:50%;bottom:120px;transform:translateX(-50%);font:700 13px Rubik;color:#b8ffcf;opacity:0;transition:opacity .3s}
+#fps{position:absolute;right:8px;top:50%;font:600 10px "IBM Plex Mono",monospace;color:#7c8598}
+#tags{position:absolute;inset:0;overflow:hidden}#tags b{position:absolute;transform:translate(-50%,-100%);font:700 11px Rubik;letter-spacing:.04em;white-space:nowrap;color:#9fd0ff;text-shadow:0 1px 2px #000,0 0 4px #000}#tags b.en{color:#ff8a7a}#tags b i{display:block;margin:2px auto 0;width:26px;height:3px;background:rgba(0,0,0,.5);border-radius:2px;overflow:hidden}#tags b i u{display:block;height:100%;background:currentColor}
+/* death / killcam */
+#dead{position:fixed;inset:0;z-index:20;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:max(90px,12vh);
+  background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 30%,rgba(60,0,0,.5))}
+#dead .kc{display:flex;align-items:center;gap:14px;padding:12px 18px}
+#dead .kc b{font:400 22px Bungee}#dead .kc .who{font:700 18px Rubik}
+#dead .kc .info{font:600 12px "IBM Plex Mono",monospace;color:var(--dim)}
+#dead .t{font:600 13px "IBM Plex Mono",monospace;color:#ffd08a;margin-top:10px;letter-spacing:.1em}
+#dead .lo{pointer-events:auto;margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:92vw}
+#dead .lo .opt{display:flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:999px}
+#dead .lo .opt canvas{width:44px;height:16px;margin:0}#dead .lo .opt b{font:600 12px Rubik}#dead .lo .opt span{display:none}
+#dead .lo:before{content:'Next life';width:100%;text-align:center;font:600 10px "IBM Plex Mono",monospace;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+/* scoreboard */
+#board{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;width:min(820px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;padding:16px 18px}
+table.sb{width:100%;border-collapse:collapse;font:500 14px Rubik;margin:4px 0 10px}
+table.sb caption{text-align:left;font:400 18px Bungee;padding:4px 2px}
+table.sb th{font:700 10px "IBM Plex Mono",monospace;color:var(--dim);text-align:right;padding:4px 8px;letter-spacing:.1em}
+table.sb th:first-child,table.sb td:first-child{text-align:left}
+table.sb td{padding:5px 8px;text-align:right;font-family:"IBM Plex Mono",monospace}
+table.sb.t0 td{background:rgba(74,163,255,.1)}table.sb.t1 td{background:rgba(255,90,74,.1)}
+table.sb tr.me td{color:var(--amber);font-weight:700}table.sb tr.dead td{opacity:.5}
+table.sb td .role{font:600 10px Rubik;color:var(--dim);margin-left:6px}
+.big{font:400 clamp(36px,8vw,60px)/1 Bungee;margin:0}
+.big.win{color:#8cc8ff}.big.lose{color:#ff9d90}
+.score{font:600 18px "IBM Plex Mono",monospace;margin:6px 0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.stats div{background:rgba(255,255,255,.05);border-radius:10px;padding:8px;text-align:center}
+.stats b{display:block;font:700 22px "IBM Plex Mono",monospace}.stats span{font:600 10px Rubik;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+/* touch */
+#touch{position:fixed;inset:0;z-index:15;pointer-events:none}
+#touch .stick{position:absolute;left:max(24px,env(safe-area-inset-left));bottom:max(24px,env(safe-area-inset-bottom));width:132px;height:132px;border-radius:50%;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 2px rgba(255,255,255,.2);pointer-events:auto}
+#touch .stick i{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px;border-radius:50%;background:rgba(255,255,255,.28)}
+#touch .tb{position:absolute;border-radius:50%;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 2px rgba(255,255,255,.25);pointer-events:auto;display:flex;align-items:center;justify-content:center;font:700 11px "IBM Plex Mono",monospace;color:#fff;letter-spacing:.05em}
+#touch .tb.on{background:rgba(255,179,71,.35)}
+#touch .fire{right:max(26px,env(safe-area-inset-right));bottom:max(96px,env(safe-area-inset-bottom));width:86px;height:86px;background:rgba(255,90,74,.25)}
+#touch .fire2{left:max(24px,env(safe-area-inset-left));bottom:180px;width:60px;height:60px;background:rgba(255,90,74,.2)}
+#touch .aim{right:max(122px,env(safe-area-inset-right));bottom:max(60px,env(safe-area-inset-bottom));width:62px;height:62px}
+#touch .jump{right:max(26px,env(safe-area-inset-right));bottom:max(20px,env(safe-area-inset-bottom));width:62px;height:62px}
+#touch .crouch{right:max(100px,env(safe-area-inset-right));bottom:max(0px,env(safe-area-inset-bottom));width:50px;height:50px;display:none}
+#touch .reload{right:max(26px,env(safe-area-inset-right));bottom:196px;width:52px;height:52px}
+#touch .swap{right:max(92px,env(safe-area-inset-right));bottom:184px;width:52px;height:52px}
+#touch .nade{right:max(150px,env(safe-area-inset-right));bottom:140px;width:52px;height:52px}
+#touch .tpause{right:max(12px,env(safe-area-inset-right));top:max(210px,env(safe-area-inset-top));width:40px;height:40px;border-radius:10px}
+#touch .tboard{right:max(60px,env(safe-area-inset-right));top:max(210px,env(safe-area-inset-top));width:40px;height:40px;border-radius:10px}
+/* compact HUD for phones (portrait and landscape) */
+@media (max-width:700px),(max-height:500px){
+  #radar{width:96px;height:96px}#radio{display:none}
+  #zone{width:96px;font-size:9px;top:calc(max(8px,env(safe-area-inset-top)) + 100px)}
+  #top .t small{display:none}#top .t{font-size:16px;padding:3px 9px}#clock{font-size:14px}#goal{display:none}#top .mid{min-width:56px;padding:2px 8px}
+  #alive{top:calc(max(8px,env(safe-area-inset-top)) + 34px);gap:10px}#alive i{width:5px;height:9px}
+  #feed>div{font-size:11px;padding:3px 7px}#feed canvas{width:40px;height:14px}#feed>div:nth-child(n+4){display:none}
+  #vitals{padding:5px 9px;gap:6px}#hpn{font-size:18px;min-width:34px}#hpbar{width:64px}#vitals .ico{display:none}
+  #ammo{padding:5px 9px;min-width:0}#mag{font-size:22px}#res{font-size:12px}#wname{font-size:9px}#slots,#nades{display:none}
+  #medals .m canvas{width:44px;height:44px}#banner{font-size:26px}#bigmsg b{font-size:30px}
+  .keys{grid-template-columns:auto 1fr}.card{padding:18px 16px 56px}.set{grid-template-columns:110px 1fr 40px}
+  #dead{padding-bottom:max(150px,20vh)}#dead .kc{padding:8px 12px}#dead .kc b{font-size:16px}
+}
+/* portrait phone: radar under the score bar on the left, vitals + ammo stacked top right */
+@media (max-width:700px){
+  #top{top:max(8px,env(safe-area-inset-top))}
+  #radar{top:calc(max(8px,env(safe-area-inset-top)) + 50px);left:8px}
+  #zone{top:calc(max(8px,env(safe-area-inset-top)) + 150px);left:8px}
+  #vitals{top:calc(max(8px,env(safe-area-inset-top)) + 54px);bottom:auto;left:auto;right:8px}
+  #ammo{top:calc(max(8px,env(safe-area-inset-top)) + 92px);bottom:auto;right:8px}
+  #feed{top:calc(max(8px,env(safe-area-inset-top)) + 150px);right:8px}
+  #touch .tpause{top:calc(max(8px,env(safe-area-inset-top)) + 8px);right:8px;width:34px;height:34px}
+  #touch .tboard{top:calc(max(8px,env(safe-area-inset-top)) + 8px);left:8px;right:auto;width:34px;height:34px}
+}
+/* landscape phone: everything along the top edge, thumbs own the bottom corners */
+@media (max-height:500px) and (min-width:701px){
+  #radar{top:8px;left:max(8px,env(safe-area-inset-left))}
+  #zone{top:106px;left:max(8px,env(safe-area-inset-left))}
+  #vitals{top:8px;bottom:auto;left:calc(max(8px,env(safe-area-inset-left)) + 106px)}
+  #ammo{top:8px;bottom:auto;right:calc(max(8px,env(safe-area-inset-right)) + 48px)}
+  #feed{top:54px;right:max(8px,env(safe-area-inset-right))}
+  #touch .tpause{top:8px;right:max(8px,env(safe-area-inset-right));width:34px;height:34px}
+  #touch .tboard{top:48px;right:max(8px,env(safe-area-inset-right));width:34px;height:34px;display:none}
+  #touch .fire2{bottom:170px}
+  #reloadbar{top:calc(50% + 34px)}
+}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="loading"><h1 style="font-size:44px">Cargo Deck</h1><div class="bar"><i id="loadbar"></i></div><p id="loadtxt">Loading</p></div>
+
+<div id="hud" hidden>
+  <div id="top" class="pnl"><div class="t t0"><small>SENTINELS</small><span id="s0">0</span></div><div class="mid"><span id="clock">8:00</span><span id="goal">Team deathmatch</span></div><div class="t t1"><span id="s1">0</span><small>CORSAIRS</small></div></div>
+  <div id="alive"><span id="al0" style="color:#8cc8ff"></span><span id="al1" style="color:#ff9d90"></span></div>
+  <div id="tags"></div>
+  <div id="radar" class="pnl"><canvas id="radarc" width="352" height="352"></canvas></div>
+  <div id="zone"></div>
+  <div id="radio"></div>
+  <div id="feed"></div>
+  <div id="scope" hidden><svg viewBox="-100 -100 200 200" preserveAspectRatio="xMidYMid slice"><defs><mask id="sm"><rect x="-300" y="-300" width="600" height="600" fill="#fff"/><circle r="74" fill="#000"/></mask>
+    <radialGradient id="sg"><stop offset=".86" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".75"/></radialGradient></defs>
+    <rect x="-300" y="-300" width="600" height="600" fill="#050505" mask="url(#sm)"/><circle r="74" fill="url(#sg)"/>
+    <g stroke="#0a0a0a" stroke-width=".45"><line x1="-74" y1="0" x2="-4" y2="0"/><line x1="4" y1="0" x2="74" y2="0"/><line x1="0" y1="4" x2="0" y2="74"/><line x1="0" y1="-74" x2="0" y2="-4"/></g>
+    <g stroke="#0a0a0a" stroke-width="1.6"><line x1="-74" y1="0" x2="-30" y2="0"/><line x1="30" y1="0" x2="74" y2="0"/><line x1="0" y1="30" x2="0" y2="74"/></g>
+    <g fill="#0a0a0a"><circle r=".5" fill="#e33"/></g>
+    <g stroke="#0a0a0a" stroke-width=".35"><line x1="-2" y1="8" x2="2" y2="8"/><line x1="-3" y1="14" x2="3" y2="14"/><line x1="-2" y1="20" x2="2" y2="20"/><line x1="8" y1="-2" x2="8" y2="2"/><line x1="-8" y1="-2" x2="-8" y2="2"/><line x1="16" y1="-2" x2="16" y2="2"/><line x1="-16" y1="-2" x2="-16" y2="2"/></g>
+  </svg></div>
+  <div id="xh"><i class="u"></i><i class="d"></i><i class="l"></i><i class="r"></i><i class="dot"></i></div>
+  <div id="hm"><i style="transform:rotate(45deg) translateY(-10px)"></i><i style="transform:rotate(135deg) translateY(-10px)"></i><i style="transform:rotate(225deg) translateY(-10px)"></i><i style="transform:rotate(315deg) translateY(-10px)"></i></div>
+  <div id="dmg"></div>
+  <div id="reloadbar" hidden><i></i></div>
+  <div id="spawnp" hidden>SPAWN PROTECTION</div>
+  <div id="center"><div id="banner"></div><div id="medals"></div></div>
+  <div id="bigmsg"><b id="bigt"></b><span id="bigs"></span></div>
+  <div id="msg"></div>
+  <div id="pickup"></div>
+  <div id="vitals" class="pnl"><svg class="ico" viewBox="0 0 20 20"><path d="M8 2h4v6h6v4h-6v6H8v-6H2V8h6z" fill="#fff"/></svg><b id="hpn">100</b><div id="hpbar"><u id="hpghost"></u><i id="hpfill"></i></div><span id="streak"></span></div>
+  <div id="ammo" class="pnl"><div id="wname">—</div><div><b id="mag">30</b> <span id="res">/ 90</span></div><div id="nades"></div><div id="slots"></div></div>
+  <div id="vig"></div>
+  <div id="flash"></div>
+  <div id="fps" hidden></div>
+</div>
+
+<div id="dead" hidden>
+  <div class="kc pnl"><canvas id="deadw" width="120" height="44" style="width:60px;height:22px"></canvas><div><div class="info">KILLED BY</div><div class="who" id="deadby">—</div><div class="info" id="deadinfo"></div></div></div>
+  <div class="t" id="deadt"></div>
+</div>
+
+<div id="board" class="pnl" hidden></div>
+
+<div id="touch" hidden>
+  <div class="stick" id="tstick"><i></i></div>
+  <div class="tb fire" data-b="fire">FIRE</div>
+  <div class="tb fire2" data-b="fire">FIRE</div>
+  <div class="tb aim" data-b="aim">AIM</div>
+  <div class="tb jump" data-b="jump">JUMP</div>
+  <div class="tb crouch" data-b="crouch">DUCK</div>
+  <div class="tb reload" data-b="reload">R</div>
+  <div class="tb swap" data-b="swap">⇄</div>
+  <div class="tb nade" data-b="nade">G</div>
+  <div class="tb tpause" data-b="pause">II</div>
+  <div class="tb tboard" data-b="board">≡</div>
+</div>
+
+<div id="menu" class="ov" hidden>
+  <div class="card">
+    <h1>Cargo Deck</h1>
+    <p class="sub">Golden hour on a moored freighter. Two five-man squads, one deck of stacked boxes: a sniper lane from door to door, alleys either side, and a pipe along each flank that only one team can enter. You plus four bots against five.</p>
+    <p class="note" id="touchNote" hidden>Touch controls: left stick moves, drag the right side to look. Tap FIRE / AIM / JUMP. A keyboard and mouse play best.</p>
+    <h3>Mode</h3>
+    <div class="seg" id="modeSeg" role="group" aria-label="Mode"><button data-v="tdm" aria-pressed="true">Team deathmatch</button><button data-v="elim" aria-pressed="false">Elimination rounds</button></div>
+    <p class="sub" id="modeDesc" style="margin-top:8px;font-size:13px"></p>
+    <h3>Primary weapon</h3>
+    <div class="grid" id="loadout"></div>
+    <h3>Bots</h3>
+    <div class="seg" id="diffSeg" role="group" aria-label="Bot skill"><button data-v="0">Recruit</button><button data-v="1" aria-pressed="true">Regular</button><button data-v="2">Veteran</button></div>
+    <details class="ctl"><summary><h3>Controls</h3></summary>
+    <div class="keys">
+      <b>WASD</b><span>Move</span><b>Mouse</b><span>Look</span>
+      <b>L-click</b><span>Fire</span><b>R-click</b><span>Aim / scope</span>
+      <b>Shift</b><span>Walk (quiet, steady)</span><b>C / Ctrl</b><span>Crouch (tuck mid-jump to climb)</span>
+      <b>Space</b><span>Jump</span><b>R</b><span>Reload</span>
+      <b>1 2 3 4</b><span>Primary, pistol, knife, grenade</span><b>Q</b><span>Last weapon</span>
+      <b>G</b><span>Cycle grenade</span><b>F</b><span>Inspect</span>
+      <b>Tab</b><span>Scoreboard</span><b>Esc</b><span>Pause / settings</span>
+    </div></details>
+    <div class="row deploy"><button class="btn" id="start">Deploy</button><button class="btn ghost" id="openSettings">Settings</button><span class="best" id="best1"></span></div>
+  </div>
+</div>
+
+<div id="pause" class="ov" hidden>
+  <div class="card narrow">
+    <h2>Paused</h2>
+    <div class="row" style="margin-bottom:10px"><button class="btn" id="resume">Resume</button><button class="btn ghost" id="quit">Leave match</button></div>
+    <div id="settingsHost"></div>
+  </div>
+</div>
+
+<div id="settings" class="ov" hidden>
+  <div class="card narrow">
+    <h2>Settings</h2>
+    <div class="set" id="setform">
+      <label for="s_sens">Mouse sensitivity</label><input id="s_sens" type="range" min="0.2" max="3" step="0.05"><output for="s_sens"></output>
+      <label for="s_adss">Aim sensitivity</label><input id="s_adss" type="range" min="0.3" max="1.5" step="0.05"><output for="s_adss"></output>
+      <label for="s_fov">Field of view</label><input id="s_fov" type="range" min="60" max="100" step="1"><output for="s_fov"></output>
+      <label for="s_vol">Master volume</label><input id="s_vol" type="range" min="0" max="1" step="0.05"><output for="s_vol"></output>
+      <label for="s_mus">Music</label><input id="s_mus" type="range" min="0" max="1" step="0.05"><output for="s_mus"></output>
+      <label for="s_sfx">Effects</label><input id="s_sfx" type="range" min="0" max="1" step="0.05"><output for="s_sfx"></output>
+    </div>
+    <h3>Graphics</h3>
+    <div class="seg" id="qualSeg" role="group" aria-label="Graphics quality"><button data-v="auto">Auto</button><button data-v="low">Low</button><button data-v="medium">Medium</button><button data-v="high">High</button></div>
+    <h3>Crosshair</h3>
+    <div class="seg" id="xhSeg" role="group" aria-label="Crosshair colour"><button data-v="#7dffb4">Green</button><button data-v="#ffffff">White</button><button data-v="#ffd23a">Yellow</button><button data-v="#5fe3ff">Cyan</button></div>
+    <div class="row" style="margin-top:12px;gap:14px"><label class="sub" style="margin:0"><input type="checkbox" id="s_inv"> Invert look</label><label class="sub" style="margin:0"><input type="checkbox" id="s_fpsc"> Show FPS</label></div>
+    <div class="row" style="margin-top:16px"><button class="btn" id="closeSettings">Done</button></div>
+  </div>
+</div>
+
+<div id="end" class="ov" hidden>
+  <div class="card">
+    <p class="big" id="result">Victory</p>
+    <p class="sub" id="endline"></p>
+    <div class="stats" id="endstats"></div>
+    <div id="endboard"></div>
+    <p class="score" id="myscore"></p>
+    <div class="row"><button class="btn" id="again">Play again</button><button class="btn ghost" id="toMenu">Menu</button><span class="best" id="best2"></span></div>
+  </div>
+</div>
+
+<a id="back" href="../../" hidden>← All games</a>
+<script src="../../arcade/page.js" data-game="cargo-deck" data-back="none"></script>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

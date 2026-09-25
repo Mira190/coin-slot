@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>风驰 Windrift</title>
+<meta name="description" content="风驰 Windrift — a 3D kart racer: drift, micro-boost, nitro, items, four circuits.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&family=Russo+One&family=ZCOOL+QingKe+HuangYou&display=swap">
+<style>
+:root{
+  --bg:#070b24;--panel:rgba(9,16,48,.8);--panel2:rgba(16,28,78,.86);--line:rgba(120,190,255,.28);
+  --cyan:#19d3ff;--yellow:#ffd21f;--pink:#ff3d8b;--violet:#9b5cff;--green:#39ff9a;--white:#f4f8ff;--muted:#9fb2d8;
+  --zh:"ZCOOL QingKe HuangYou","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --en:"Russo One","Arial Black",system-ui,sans-serif;
+  --body:"Noto Sans SC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--sl:env(safe-area-inset-left,0px);--sr:env(safe-area-inset-right,0px);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--white);font-family:var(--body);overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+kbd{display:inline-block;min-width:1.7em;padding:1px 6px;border-radius:6px;background:#1d2a60;border:1px solid #3a5bb0;border-bottom-width:3px;font:700 12px var(--en);color:#fff;text-align:center;line-height:1.5}
+small{font-family:var(--en);font-size:.62em;letter-spacing:.12em;opacity:.8;font-weight:400}
+
+/* ---------- shared bits ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:12px 22px;border-radius:14px;font:900 18px var(--body);letter-spacing:.04em;
+  background:linear-gradient(180deg,#2c7bff,#1747c9);box-shadow:0 4px 0 #0c2a82,0 10px 24px rgba(20,80,255,.35),inset 0 1px 0 rgba(255,255,255,.35);transition:transform .08s,filter .15s}
+.btn small{font-size:11px}
+.btn:hover{filter:brightness(1.12)}.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #0c2a82}
+.btn.hot{background:linear-gradient(180deg,#ffe14f,#ffae00);color:#2a1600;box-shadow:0 4px 0 #b36b00,0 10px 30px rgba(255,190,0,.45),inset 0 1px 0 rgba(255,255,255,.6)}
+.btn.ghost{background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1.5px var(--line)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 18px 50px rgba(0,0,20,.45)}
+.bi{display:flex;flex-direction:column;line-height:1.05}
+.bi small{margin-top:2px}
+
+/* ---------- title ---------- */
+#title{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:calc(var(--st) + 30px) 7vw calc(var(--sb) + 40px);
+  background:radial-gradient(ellipse at 25% 50%,rgba(7,11,36,.78),rgba(7,11,36,.2) 60%,transparent)}
+.logo{font-family:var(--zh);font-size:clamp(84px,17vw,180px);line-height:.9;margin:0;letter-spacing:.02em;
+  background:linear-gradient(180deg,#fff 10%,#ffe36b 45%,#ff8a1f 80%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 6px 0 #7a2a00) drop-shadow(0 0 30px rgba(255,140,40,.45));transform:skewX(-8deg)}
+.logo-en{font:clamp(22px,4vw,40px) var(--en);letter-spacing:.42em;margin:8px 0 0 6px;color:#bfe9ff;text-shadow:0 0 20px rgba(25,211,255,.7);transform:skewX(-8deg)}
+.tagline{max-width:34em;margin:22px 0 28px;font-size:16px;line-height:1.7;color:#d6e4ff}
+.tagline b{color:var(--yellow)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.foot{margin-top:26px;font-size:13px;color:var(--muted);line-height:1.6}
+#allGames{position:fixed;z-index:30;left:calc(14px + var(--sl));bottom:calc(12px + var(--sb));padding:7px 14px;border-radius:999px;background:rgba(7,11,36,.75);color:#dfe8ff;font:700 13px var(--body);text-decoration:none;box-shadow:inset 0 0 0 1px var(--line)}
+
+/* ---------- setup ---------- */
+#setup{position:fixed;inset:0;display:grid;grid-template-columns:minmax(300px,380px) 1fr minmax(300px,380px);grid-template-rows:auto 1fr auto;gap:14px;
+  padding:calc(var(--st) + 14px) calc(var(--sr) + 16px) calc(var(--sb) + 14px) calc(var(--sl) + 16px)}
+#setup header{grid-column:1/-1;display:flex;align-items:center;gap:14px}
+#setup header h2{margin:0;font:34px var(--zh);letter-spacing:.06em}
+#setup header h2 small{font-size:14px;margin-left:8px}
+.col{padding:16px;overflow:auto;min-height:0}
+.col h3{margin:4px 0 10px;font:22px var(--zh);color:#cfe6ff;display:flex;align-items:baseline;gap:8px}
+.col h3 small{font-size:11px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.seg button{padding:10px 6px;border-radius:12px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1.5px var(--line);font:20px var(--zh);display:flex;flex-direction:column;align-items:center;gap:2px}
+.seg button small{font-size:10px}
+.seg button[aria-pressed=true]{background:linear-gradient(180deg,#2c7bff,#1747c9);box-shadow:inset 0 0 0 2px #9fd8ff,0 0 18px rgba(40,120,255,.5)}
+.mdesc{font-size:13px;color:var(--muted);margin:-8px 0 14px;line-height:1.5}
+.tcards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tcard{position:relative;border-radius:14px;overflow:hidden;background:#0c1640;box-shadow:inset 0 0 0 1.5px var(--line);text-align:left;padding:0}
+.tcard canvas{display:block;width:100%;aspect-ratio:4/3}
+.tcard .tn{position:absolute;left:8px;right:8px;bottom:6px;font:20px var(--zh);text-shadow:0 2px 4px #000;line-height:1.05}
+.tcard .tn small{display:block;font-size:10px}
+.tcard .tb{position:absolute;top:6px;right:8px;font:11px var(--en);color:var(--yellow);text-shadow:0 1px 3px #000}
+.tcard[aria-pressed=true]{box-shadow:inset 0 0 0 3px var(--yellow),0 0 20px rgba(255,210,31,.35)}
+.tinfo{margin-top:12px;font-size:13px;line-height:1.6;color:#d6e4ff}
+.tinfo b{color:var(--yellow);font-family:var(--en);font-weight:400}
+.kgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.kgrid button{padding:8px 2px;border-radius:12px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1.5px var(--line);font:18px var(--zh);display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.kgrid button small{font-size:9px;margin-top:3px}
+.kgrid button[aria-pressed=true]{background:rgba(255,210,31,.16);box-shadow:inset 0 0 0 2.5px var(--yellow)}
+.kname{font:30px var(--zh);margin:4px 0 0}.kname small{font-size:13px;margin-left:8px}
+.ktag{font-size:13px;color:var(--cyan);margin:2px 0 10px}
+.stat{display:grid;grid-template-columns:78px 1fr;align-items:center;gap:8px;margin:5px 0;font-size:13px}
+.stat .bar{height:9px;border-radius:9px;background:rgba(255,255,255,.1);overflow:hidden}
+.stat .bar i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--cyan),#8fe9ff);transition:width .3s}
+.stat small{font-size:9px}
+.paints{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:6px}
+.paints button{aspect-ratio:1;border-radius:50%;box-shadow:inset 0 -6px 10px rgba(0,0,0,.35),inset 0 4px 8px rgba(255,255,255,.35),0 0 0 2px rgba(255,255,255,.15)}
+.paints button[aria-pressed=true]{box-shadow:inset 0 -6px 10px rgba(0,0,0,.35),inset 0 4px 8px rgba(255,255,255,.35),0 0 0 3px var(--yellow),0 0 14px var(--yellow)}
+.pname{font-size:13px;color:var(--muted);margin-top:8px}
+#colL{grid-column:1;grid-row:2}#colR{grid-column:3;grid-row:2}#setup .spacer{display:none}
+#setup footer{grid-column:1/-1;grid-row:3;display:flex;justify-content:center;gap:12px}
+#setup footer .btn{min-width:260px;font-size:22px;padding:14px 26px}
+.preview-note{grid-column:2;grid-row:2;align-self:end;justify-self:center;font-size:12px;color:var(--muted);background:rgba(7,11,36,.5);padding:4px 12px;border-radius:999px}
+
+/* ---------- HUD ---------- */
+#hud{position:fixed;inset:0;pointer-events:none;font-family:var(--body)}
+.hud-tl{position:absolute;left:calc(14px + var(--sl));top:calc(12px + var(--st));display:flex;flex-direction:column;gap:8px}
+.pos{display:flex;align-items:baseline;gap:2px;font-family:var(--en);text-shadow:0 3px 0 rgba(0,0,40,.6),0 0 18px rgba(25,211,255,.5)}
+.pos b{font-size:64px;line-height:.9;font-weight:400;font-style:italic;background:linear-gradient(180deg,#fff,#9fe8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pos span{font-size:24px;color:#bcd8ff;font-style:italic}
+.pos .lbl{margin-left:8px;font:16px var(--zh);color:#fff}
+.pos .lbl small{display:block;font-size:9px}
+.lapbox{display:grid;grid-template-columns:auto auto;gap:3px 14px;padding:8px 12px;border-radius:12px;background:rgba(7,12,40,.55);border:1px solid rgba(120,190,255,.2)}
+.lapbox label{font:14px var(--zh);color:#cfe0ff;white-space:nowrap}.lapbox label small{font-size:8px}
+.lapbox b{font:15px var(--en);font-weight:400;text-align:right;font-variant-numeric:tabular-nums}
+.lapbox .gd.minus{color:var(--green)}.lapbox .gd.plus{color:#ff6b7a}
+#hStand{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;font-size:12px}
+#hStand li{display:flex;align-items:center;gap:6px;padding:2px 8px 2px 4px;border-radius:7px;background:rgba(7,12,40,.45);width:132px}
+#hStand li i{width:9px;height:9px;border-radius:50%}
+#hStand li b{font:12px var(--en);width:14px;text-align:right;font-weight:400}
+#hStand li.me{background:rgba(255,210,31,.3);color:#fff}
+#minimap{position:absolute;right:calc(12px + var(--sr));top:calc(12px + var(--st));width:190px;height:190px;border-radius:16px;background:rgba(7,12,40,.5);border:1px solid rgba(120,190,255,.25)}
+.hud-btns{position:absolute;right:calc(12px + var(--sr));top:calc(210px + var(--st));display:flex;gap:6px;pointer-events:auto}
+.hud-btns button{width:40px;height:40px;border-radius:12px;background:rgba(7,12,40,.6);border:1px solid rgba(120,190,255,.3);font:15px var(--zh);color:#fff}
+.hud-br{position:absolute;right:calc(18px + var(--sr));bottom:calc(14px + var(--sb));width:210px;height:150px}
+#speedo{width:210px;height:150px}
+.hud-bc{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(16px + var(--sb));display:flex;flex-direction:column;align-items:center;gap:10px}
+.light{font:34px var(--zh);padding:6px 26px 4px;border-radius:999px;background:rgba(7,12,40,.4);border:2px solid rgba(120,190,255,.25);color:rgba(255,255,255,.25);line-height:1;display:flex;flex-direction:column;align-items:center;transition:transform .08s}
+.light small{font-size:9px}
+.light.on{background:radial-gradient(circle,#7ae6ff,#1b7bff);border-color:#e6fbff;color:#fff;box-shadow:0 0 30px #29d3ff,0 0 70px rgba(41,211,255,.6);transform:scale(1.12)}
+.light.on.dbl{background:radial-gradient(circle,#ffb3ea,#b44bff);box-shadow:0 0 30px #ff6bd5,0 0 70px rgba(200,80,255,.6)}
+.light.land{background:radial-gradient(circle,#ffe58a,#ff9a1f);border-color:#fff4c8;color:#3a1c00;box-shadow:0 0 30px #ffc31f}
+.gaugewrap{display:flex;align-items:center;gap:12px;padding:8px 14px;border-radius:16px;background:rgba(7,12,40,.55);border:1px solid rgba(120,190,255,.2)}
+.gaugewrap .lb{font:16px var(--zh);white-space:nowrap}.gaugewrap .lb small{display:block;font-size:8px}
+.gauge{width:min(320px,42vw);height:16px;border-radius:10px;background:rgba(255,255,255,.1);overflow:hidden;box-shadow:inset 0 2px 4px rgba(0,0,0,.5)}
+.gauge i{display:block;height:100%;width:0;border-radius:10px;background:linear-gradient(90deg,#1b7bff,#29d3ff,#b8f6ff);box-shadow:0 0 12px #29d3ff}
+.gauge.full i{background:linear-gradient(90deg,#ffae00,#ffd21f,#fff4b0);box-shadow:0 0 16px #ffd21f}
+.bottles{display:flex;gap:6px}
+.bottles i{position:relative;width:22px;height:38px;border-radius:7px 7px 9px 9px;border:2px solid rgba(160,210,255,.5);background:rgba(255,255,255,.06)}
+.bottles i::before{content:"";position:absolute;left:5px;right:5px;top:-7px;height:6px;border-radius:2px;background:rgba(160,210,255,.6)}
+.bottles i.on{background:linear-gradient(180deg,#b8f6ff,#29d3ff 40%,#1b5bff);border-color:#e6fbff;box-shadow:0 0 14px #29d3ff}
+.bottles i.pop{animation:pop .4s}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.45)}100%{transform:scale(1)}}
+.bottles .k{font:11px var(--en);align-self:center;opacity:.8;margin-left:4px;white-space:nowrap}
+.items{display:flex;gap:10px}
+.slot{position:relative;width:70px;height:70px;border-radius:16px;background:rgba(7,12,40,.6);border:2px solid rgba(160,210,255,.4);display:flex;align-items:center;justify-content:center}
+.slot kbd{position:absolute;left:-8px;top:-8px}
+.slot .ic{font:16px var(--zh);text-align:center;line-height:1;display:flex;flex-direction:column;align-items:center}
+.slot .ic svg{display:block;margin-bottom:1px}
+.slot .ic small{display:block;font-size:8px;margin-top:3px}
+.slot.full{border-color:#fff;box-shadow:0 0 16px rgba(255,210,31,.6)}
+.slot.roll .ic{animation:roll .12s steps(2) infinite}
+@keyframes roll{50%{opacity:.4;transform:translateY(-3px)}}
+/* one top-centre lane: warning, banner, then pops; rows are in normal flow so they can never overlap */
+#feed{position:absolute;left:50%;top:calc(11% + var(--st));transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;width:92vw;pointer-events:none}
+#pops{display:flex;flex-direction:column;align-items:center;gap:4px}
+.pop{font:44px var(--zh);line-height:1;text-align:center;color:#fff;-webkit-text-stroke:1.5px #0a2a8a;text-shadow:0 4px 0 #0a2a8a,0 0 18px rgba(41,211,255,.6);animation:popin .22s ease-out both;white-space:nowrap;transition:opacity .22s,transform .22s}
+.pop.out{opacity:0;transform:scale(.94)}
+.pop .x{font:26px var(--en);font-style:italic;margin-left:8px;-webkit-text-stroke:0;color:#fff;text-shadow:0 2px 0 #0a2a8a}
+.pop small{display:block;font-size:13px;letter-spacing:.3em;-webkit-text-stroke:0;text-shadow:0 1px 3px #000;margin-top:2px}
+.pop.gold{color:#ffe14f;-webkit-text-stroke-color:#7a3a00;text-shadow:0 4px 0 #7a3a00,0 0 26px rgba(255,190,0,.9)}
+.pop.pink{color:#ffc4f0;-webkit-text-stroke-color:#6a0a5a;text-shadow:0 4px 0 #6a0a5a,0 0 26px rgba(255,80,200,.9)}
+.pop.red{color:#ffd0d0;-webkit-text-stroke-color:#7a0000;text-shadow:0 4px 0 #7a0000,0 0 26px rgba(255,40,40,.9)}
+.pop.s{font-size:30px}
+@keyframes popin{0%{opacity:0;transform:scale(.72)}100%{opacity:1;transform:scale(1)}}
+/* countdown numerals: solid fill, a thick outline painted under the fill (keeps the glyph fat), a hard 3D drop and a
+   tight dark shadow for separation. No wide glow: it hazed the edges and washed the numeral out */
+#count{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);font:170px var(--en);font-style:italic;color:#ffd21f;-webkit-text-stroke:14px #0b1850;paint-order:stroke fill;text-shadow:0 10px 0 #0b1850,0 14px 22px rgba(0,0,0,.55);pointer-events:none}
+#count.go{color:#39ff9a;-webkit-text-stroke-color:#00401e;text-shadow:0 10px 0 #00401e,0 14px 22px rgba(0,0,0,.55)}
+#count.anim{animation:cnt .9s ease-out both}
+@keyframes cnt{0%{transform:translate(-50%,-50%) scale(2.2);opacity:0}18%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(-50%,-50%) scale(.92);opacity:1}}
+#banner{display:none;font:54px var(--zh);line-height:1.05;color:#ffe14f;-webkit-text-stroke:2px #7a3a00;text-shadow:0 5px 0 #7a3a00,0 0 22px rgba(255,190,0,.6);white-space:nowrap;text-align:center}
+#banner small{display:block;font-size:15px;letter-spacing:.35em;-webkit-text-stroke:0;color:#fff;text-shadow:0 2px 4px #000}
+#banner.on{display:block;animation:bann 2.2s ease-out forwards}
+@keyframes bann{0%{opacity:0;transform:scale(.7)}10%{opacity:1;transform:scale(1)}82%{opacity:1}100%{opacity:0}}
+#warn{font:30px var(--zh);padding:6px 22px;border-radius:12px;background:rgba(220,20,40,.85);border:2px solid #fff;white-space:nowrap;animation:blink .45s steps(2) infinite;text-align:center;line-height:1.1}
+#warn small{display:block;font-size:10px}
+@keyframes blink{50%{opacity:.35}}
+#ink{position:absolute;inset:0;opacity:0;transition:opacity .4s;background:
+ radial-gradient(circle at 30% 40%,rgba(30,10,50,.95) 0 14%,transparent 15%),radial-gradient(circle at 62% 58%,rgba(30,10,50,.95) 0 17%,transparent 18%),
+ radial-gradient(circle at 48% 30%,rgba(40,15,70,.9) 0 10%,transparent 11%),radial-gradient(circle at 75% 35%,rgba(30,10,50,.9) 0 9%,transparent 10%),radial-gradient(circle at 25% 70%,rgba(30,10,50,.9) 0 11%,transparent 12%)}
+#ink.on{opacity:1}
+#toast{position:absolute;left:50%;bottom:calc(150px + var(--sb));transform:translateX(-50%);padding:6px 16px;border-radius:14px;background:rgba(7,12,40,.8);font-size:14px;opacity:0;transition:opacity .25s;max-width:92vw;width:max-content;text-align:center;line-height:1.4}
+#toast.on{opacity:1}
+.hint{position:absolute;left:calc(14px + var(--sl));bottom:calc(14px + var(--sb));font-size:12px;color:#cfe0ff;background:rgba(7,12,40,.5);padding:6px 10px;border-radius:10px;line-height:1.6;max-width:320px}
+
+/* ---------- touch ---------- */
+#touch{position:fixed;inset:0;pointer-events:none}
+#touch button{position:absolute;pointer-events:auto;border-radius:50%;background:rgba(20,40,110,.45);border:2px solid rgba(160,210,255,.55);color:#fff;font:22px var(--zh);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;touch-action:none}
+#touch button small{font-size:8px;margin-top:3px}
+#touch button.act{background:rgba(41,211,255,.55);border-color:#fff}
+#tL{left:calc(16px + var(--sl));bottom:calc(26px + var(--sb));width:84px;height:84px}
+#tR{left:calc(112px + var(--sl));bottom:calc(26px + var(--sb));width:84px;height:84px}
+#tDrift{right:calc(20px + var(--sr));bottom:calc(30px + var(--sb));width:96px;height:96px;background:rgba(255,120,40,.45)!important}
+#tBoost{right:calc(126px + var(--sr));bottom:calc(20px + var(--sb));width:70px;height:70px}
+#tNitro{right:calc(28px + var(--sr));bottom:calc(140px + var(--sb));width:70px;height:70px}
+#tBrake{left:calc(62px + var(--sl));bottom:calc(122px + var(--sb));width:58px;height:58px}
+#tItem2{right:calc(124px + var(--sr));bottom:calc(104px + var(--sb));width:58px;height:58px}
+body.touch .hud-br{bottom:auto;top:calc(262px + var(--st));transform:scale(.7);transform-origin:top right}
+body.touch .hud-bc{bottom:calc(190px + var(--sb));transform:translateX(-50%) scale(.85);transform-origin:bottom center}
+body.touch .hint{display:none}
+
+/* ---------- modals / results ---------- */
+.modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(3,6,20,.6);padding:16px;z-index:20}
+.modal .panel{padding:18px 22px;max-width:980px;width:100%;max-height:calc(100% - 20px);overflow:auto}
+.modal h2{margin:0 0 12px;font:34px var(--zh)}.modal h2 small{font-size:13px;margin-left:8px}
+.mbtns{display:flex;flex-direction:column;gap:10px;min-width:260px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;align-items:center;font-size:13.5px;margin:0;align-content:start}
+.keys dt{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.keys dd{margin:0;color:#dbe7ff}
+.techs{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:13px;line-height:1.45;color:#dbe7ff}
+.techs small{display:block;opacity:.75}
+.techs b{font:17px var(--zh);color:var(--yellow);margin-right:6px}
+.note{margin-top:12px;padding:8px 12px;border-radius:12px;background:rgba(255,120,40,.14);border:1px solid rgba(255,160,80,.4);font-size:12.5px;line-height:1.55;color:#ffe2c8}
+.cols2{display:grid;grid-template-columns:minmax(260px,.8fr) 1.2fr;gap:18px}
+.opts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.opts button{padding:6px 12px;border-radius:10px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1.5px var(--line);font-size:13px}
+.opts button[aria-pressed=true]{background:rgba(25,211,255,.25);box-shadow:inset 0 0 0 2px var(--cyan)}
+#results{position:fixed;inset:0;display:grid;grid-template-columns:1fr minmax(320px,460px);gap:16px;padding:calc(var(--st) + 16px) calc(var(--sr) + 16px) calc(var(--sb) + 16px) calc(var(--sl) + 16px);pointer-events:none}
+#results .panel{grid-column:2;align-self:center;padding:18px 20px;pointer-events:auto;max-height:100%;overflow:auto}
+.rhead{font:40px var(--zh);margin:0}.rhead small{font-size:14px;margin-left:8px}
+.rplace{font:76px var(--en);font-style:italic;line-height:1;margin:4px 0;background:linear-gradient(180deg,#fff,#ffd21f);-webkit-background-clip:text;background-clip:text;color:transparent}
+.rtable{width:100%;border-collapse:collapse;font-size:14px;margin:10px 0}
+.rtable td{padding:5px 6px;border-bottom:1px solid rgba(120,190,255,.14)}
+.rtable td:first-child{font:16px var(--en);width:28px}
+.rtable td.t{font:14px var(--en);text-align:right;font-variant-numeric:tabular-nums}
+.rtable tr.me{background:rgba(255,210,31,.18)}
+.rtable i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.rec{display:inline-block;margin:2px 6px 2px 0;padding:3px 10px;border-radius:999px;background:linear-gradient(90deg,#ff3d8b,#ffae00);font:14px var(--zh);animation:pop .6s}
+.rstats{font-size:13px;color:#cfe0ff;line-height:1.7}
+.rstats b{color:#fff;font-family:var(--en);font-weight:400}
+.podlabels{grid-column:1;grid-row:1;position:relative}
+#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--bg);z-index:50;font:28px var(--zh)}
+#loading small{font-size:12px}
+#loading .spin{width:44px;height:44px;border-radius:50%;border:4px solid rgba(255,255,255,.15);border-top-color:var(--yellow);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#err{position:fixed;left:12px;right:12px;bottom:12px;z-index:60;padding:10px 14px;border-radius:12px;background:#5a0a1a;font-size:13px}
+
+@media (max-width:900px){
+  #setup{grid-template-columns:1fr;grid-template-rows:auto auto auto auto;overflow:auto;gap:10px}
+  #setup .col{overflow:visible;min-height:auto} /* rows grow to their content and the page scrolls (min-height:0 let them overlap) */
+  #colL,#colR,#setup footer{grid-column:1;grid-row:auto}
+  #setup .spacer{display:block}
+  #setup footer{position:sticky;bottom:0;padding:18px 0 calc(46px + var(--sb));background:linear-gradient(rgba(5,8,28,0),rgba(5,8,28,.94) 30%)} /* clears the fixed ← 全部游戏 link */
+  .preview-note{display:none}
+  #setup .spacer{height:34vh;grid-row:auto}
+  #results{grid-template-columns:1fr;grid-template-rows:38vh auto;overflow:auto}
+  #results .panel{grid-column:1;grid-row:2;align-self:start}
+  .cols2{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .pos b{font-size:46px}.pos span{font-size:18px}
+  .lapbox{padding:6px 8px;gap:1px 8px}.lapbox label{font-size:12px}.lapbox b{font-size:12px}
+  #hStand{display:none}
+  #minimap{width:120px;height:120px}
+  /* phones: the notification lane starts below the minimap / buttons and the speedometer shrinks out of its way */
+  #feed{top:calc(24% + var(--st))}
+  body.touch .hud-br{transform:scale(.55)}
+  .hud-btns{top:calc(138px + var(--st))}
+  body.touch .hud-br{top:calc(186px + var(--st))}
+  .gauge{width:40vw}
+  .pop{font-size:32px}.pop.s{font-size:22px}.pop .x{font-size:20px}
+  #count{font-size:112px;-webkit-text-stroke-width:10px}
+  #banner{font-size:36px}
+  .tagline{font-size:14px}
+  .kgrid{grid-template-columns:repeat(4,1fr)}
+}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+} }
+</script>
+<script src="../../arcade/page.js" data-game="windrift" data-back="none"></script>
+</head>
+<body>
+<canvas id="c" tabindex="0" aria-label="风驰 Windrift 3D view"></canvas>
+
+<div id="loading"><div class="spin"></div><div>加载中 <small>LOADING</small></div></div>
+
+<!-- title -->
+<section id="title" hidden>
+  <h1 class="logo">风驰</h1>
+  <div class="logo-en">WINDRIFT</div>
+  <p class="tagline">按住 <kbd>Shift</kbd> 漂移<b>集气</b>，松开后看准 <b>喷</b> 灯亮起点 <kbd>↑</kbd> 放<b>小喷</b>，<kbd>Ctrl</kbd> 放<b>氮气</b>。四条赛道，八位车手，竞速、道具与计时赛。<br>
+    <span style="opacity:.8">Hold Shift to drift and charge nitro, tap ↑ when the boost light flashes, Ctrl to fire nitro. Four circuits, eight racers, speed, item and time-trial modes.</span></p>
+  <div class="row">
+    <button class="btn hot" id="bPlay">开始游戏 <small>PLAY</small></button>
+    <button class="btn ghost" id="bHelp">操作说明 <small>CONTROLS</small></button>
+  </div>
+  <div class="foot" id="titleFoot"></div>
+</section>
+
+<!-- setup -->
+<section id="setup" hidden>
+  <header>
+    <button class="btn ghost" id="bBack" aria-label="Back">←</button>
+    <h2>赛前准备<small>RACE SETUP</small></h2>
+  </header>
+  <div class="col panel" id="colL">
+    <h3>模式 <small>MODE</small></h3>
+    <div class="seg" id="modes"></div>
+    <p class="mdesc" id="mdesc"></p>
+    <h3>难度 <small>DIFFICULTY</small></h3>
+    <div class="seg" id="diffs"></div>
+    <h3>赛道 <small>TRACK</small></h3>
+    <div class="tcards" id="tracks"></div>
+    <div class="tinfo" id="tinfo"></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="col panel" id="colR">
+    <h3>赛车 <small>KART</small></h3>
+    <div class="kgrid" id="karts"></div>
+    <div class="kname" id="kname"></div>
+    <div class="ktag" id="ktag"></div>
+    <div id="kstats"></div>
+    <h3 style="margin-top:14px">涂装 <small>PAINT</small></h3>
+    <div class="paints" id="paints"></div>
+    <div class="pname" id="pname"></div>
+  </div>
+  <div class="preview-note">拖动旋转 · drag to spin</div>
+  <footer><button class="btn hot" id="bGo">开始比赛 <small>START RACE</small></button></footer>
+</section>
+
+<!-- HUD -->
+<section id="hud" hidden>
+  <div class="hud-tl">
+    <div class="pos" id="hPosBox"><b id="hPos">1</b><span id="hPosN">/8</span><div class="lbl">名次<small>POSITION</small></div></div>
+    <div class="lapbox">
+      <label>圈数 <small>LAP</small></label><b id="hLap">1/3</b>
+      <label>总时间 <small>TIME</small></label><b id="hTime">0:00.00</b>
+      <label>本圈 <small>LAP</small></label><b id="hLapT">0:00.00</b>
+      <label>最佳圈 <small>BEST</small></label><b id="hBest">--:--.--</b>
+      <label id="hGhostL" hidden>幽灵差 <small>GHOST</small></label><b id="hGhost" class="gd" hidden>--</b>
+    </div>
+    <ol id="hStand"></ol>
+  </div>
+  <canvas id="minimap" width="380" height="380" aria-label="minimap"></canvas>
+  <div class="hud-btns">
+    <button id="hbPause" aria-label="Pause">⏸</button>
+    <button id="hbCam" aria-label="Camera">视</button>
+    <button id="hbMute" aria-label="Mute">♪</button>
+  </div>
+  <div class="hud-bc">
+    <div class="light" id="light">喷<small>TAP ↑ BOOST</small></div>
+    <div class="gaugewrap" id="gaugeWrap">
+      <div class="lb">集气<small>CHARGE</small></div>
+      <div class="gauge" id="gauge"><i id="gaugeFill"></i></div>
+      <div class="bottles"><i id="b0"></i><i id="b1"></i><span class="k">氮气<br>Ctrl</span></div>
+    </div>
+    <div class="gaugewrap items" id="itemWrap" hidden>
+      <div class="lb">道具<small>ITEMS</small></div>
+      <div class="slot" id="slot0"><kbd>Z</kbd><div class="ic"></div></div>
+      <div class="slot" id="slot1"><kbd>X</kbd><div class="ic"></div></div>
+    </div>
+  </div>
+  <div class="hud-br"><canvas id="speedo" width="420" height="300"></canvas></div>
+  <div id="feed"><div id="warn" hidden></div><div id="banner"></div><div id="pops"></div></div>
+  <div id="count"></div>
+  <div id="ink"></div>
+  <div id="toast"></div>
+  <div class="hint" id="hint"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 驾驶 · <kbd>Shift</kbd> 漂移 · <kbd>Ctrl</kbd>/<kbd>Space</kbd> 氮气 · <kbd>R</kbd> 复位 · <kbd>C</kbd> 视角 · <kbd>Esc</kbd> 暂停</div>
+</section>
+
+<section id="touch" hidden>
+  <button id="tL" aria-label="Steer left">◀</button>
+  <button id="tR" aria-label="Steer right">▶</button>
+  <button id="tBrake" aria-label="Brake">刹<small>BRAKE</small></button>
+  <button id="tDrift" aria-label="Drift">漂移<small>DRIFT</small></button>
+  <button id="tBoost" aria-label="Micro boost">喷<small>BOOST</small></button>
+  <button id="tNitro" aria-label="Nitro">氮气<small>NITRO</small></button>
+  <button id="tItem2" aria-label="Item 2" hidden>道具2<small>X</small></button>
+</section>
+
+<!-- pause -->
+<section id="pause" class="modal" hidden>
+  <div class="panel" style="max-width:420px">
+    <h2>暂停<small>PAUSED</small></h2>
+    <div class="mbtns">
+      <button class="btn hot" id="pResume">继续 <small>RESUME</small></button>
+      <button class="btn" id="pRestart">重新开始 <small>RESTART</small></button>
+      <button class="btn ghost" id="pHelp">操作说明 <small>CONTROLS</small></button>
+      <button class="btn ghost" id="pQuit">退出到菜单 <small>QUIT</small></button>
+    </div>
+    <h3 style="margin:16px 0 0;font:18px var(--zh)">视角 <small>CAMERA</small></h3>
+    <div class="opts" id="optCam"></div>
+    <h3 style="margin:10px 0 0;font:18px var(--zh)">画质 <small>QUALITY</small></h3>
+    <div class="opts" id="optQ"></div>
+    <h3 style="margin:10px 0 0;font:18px var(--zh)">声音 <small>SOUND</small></h3>
+    <div class="opts" id="optS"></div>
+  </div>
+</section>
+
+<!-- help -->
+<section id="help" class="modal" hidden>
+  <div class="panel">
+    <h2>操作说明<small>CONTROLS &amp; TECHNIQUES</small></h2>
+    <div class="cols2">
+      <dl class="keys">
+        <dt><kbd>↑</kbd></dt><dd>油门 · 点按放小喷 <small>ACCELERATE · TAP FOR MICRO BOOST</small></dd>
+        <dt><kbd>↓</kbd></dt><dd>刹车 / 倒车 <small>BRAKE / REVERSE</small></dd>
+        <dt><kbd>←</kbd><kbd>→</kbd></dt><dd>转向 <small>STEER</small></dd>
+        <dt><kbd>Shift</kbd></dt><dd>漂移（按住）<small>DRIFT (HOLD)</small></dd>
+        <dt><kbd>Ctrl</kbd><kbd>Space</kbd></dt><dd>氮气 / 道具赛用道具1 <small>NITRO / ITEM 1</small></dd>
+        <dt><kbd>Z</kbd><kbd>X</kbd></dt><dd>使用道具栏 1 / 2 <small>USE ITEM SLOT 1 / 2</small></dd>
+        <dt><kbd>R</kbd></dt><dd>复位 <small>RESET TO TRACK</small></dd>
+        <dt><kbd>C</kbd></dt><dd>切换视角 <small>CAMERA</small></dd>
+        <dt><kbd>Esc</kbd></dt><dd>暂停 <small>PAUSE</small></dd>
+        <dt><kbd>M</kbd></dt><dd>静音 <small>MUTE</small></dd>
+      </dl>
+      <ul class="techs">
+        <li><b>漂移</b>按住 Shift＋方向，火花由白→蓝→橙→紫，越久越强，同时集气。<small>Drift: sparks change colour as the charge grows.</small></li>
+        <li><b>小喷</b>松开 Shift，车身回正时 <b style="font-size:14px">喷</b> 灯亮 0.45 秒，此时点 ↑；0.15 秒内为「完美」。<small>Micro boost: tap ↑ while the light is on.</small></li>
+        <li><b>双喷</b>漂移中反打方向拉正车头（仍按住 Shift）→ 第一次亮灯点 ↑，再松 Shift → 第二次亮灯再点 ↑。<small>Double: pull the nose straight mid-drift, tap, release, tap again.</small></li>
+        <li><b>断位漂移</b>松开 Shift 后 0.5 秒内同向再按 Shift，车头再甩一下继续漂，接上小喷即断位双喷。<small>Broken drift: re-press Shift within 0.5 s.</small></li>
+        <li><b>点漂</b>轻点 Shift（不足 0.3 秒）快速调整车头。<small>Tap drift: a quick flick to set the line.</small></li>
+        <li><b>甩尾漂移</b>先按住 Shift，再连点两下同一方向（0.4 秒内），大弧度甩尾过长弯。<small>Tail whip: hold Shift, then double-tap the direction.</small></li>
+        <li><b>空喷 · 落地喷</b>腾空时点 ↑ 空喷；落地 0.35 秒内再点 ↑ 落地喷。<small>Air boost in the air, landing boost on touchdown.</small></li>
+        <li><b>起步喷</b>倒计时 GO 前 0.3 秒内按下 ↑。<small>Rocket start: press ↑ just before GO.</small></li>
+        <li><b>氮气 · 集气</b>集气条满得一瓶氮气（最多 2 瓶）；小喷与氮气叠加有 CW / WCW / CWW 连喷。<small>Full gauge = 1 bottle (max 2). Stack boosts for CW / WCW / CWW.</small></li>
+      </ul>
+    </div>
+    <div class="note"><b>键位提示 Keyboard note:</b> 方向键是主键位（WASD 也可以，但比赛中 Ctrl＋W 会关闭浏览器标签页，浏览器不允许网页拦截——用 WASD 时请用 Space 放氮气）。比赛中其他 Ctrl 组合键已被拦截。macOS 上 Ctrl＋方向键可能切换桌面：点按 Ctrl，不要按住。<br>
+      Arrow keys are the primary layout. WASD also works, but Ctrl+W closes the tab and browsers don't let pages block it, so use Space for nitro with WASD. Other Ctrl combos are blocked while racing. On macOS, Ctrl+arrow can switch desktops: tap Ctrl, don't hold it.<br>
+      触屏：自动油门，◀ ▶ 转向，漂移 / 喷 / 氮气按钮。Touch: auto-throttle, ◀ ▶ steer, Drift / Boost / Nitro buttons.<br>
+      手柄：摇杆转向，A/RT 油门（点 A 放喷），B/LT 刹车，LB/RB 漂移，X 氮气，Y 道具2，Back 视角，Start 暂停。Gamepad: stick steer, A/RT throttle (tap A to boost), B/LT brake, LB/RB drift, X nitro, Y item 2, Back camera, Start pause.</div>
+    <div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn hot" id="hClose">好的 <small>GOT IT</small></button></div>
+  </div>
+</section>
+
+<!-- results -->
+<section id="results" hidden>
+  <div class="podlabels" id="podLabels"></div>
+  <div class="panel">
+    <p class="rhead" id="rHead">比赛结束<small>RESULTS</small></p>
+    <div class="rplace" id="rPlace">1st</div>
+    <div id="rRecs"></div>
+    <table class="rtable" id="rTable"></table>
+    <div class="rstats" id="rStats"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn hot" id="rAgain">再来一次 <small>RETRY</small></button>
+      <button class="btn" id="rNext">下一赛道 <small>NEXT</small></button>
+      <button class="btn ghost" id="rMenu">菜单 <small>MENU</small></button>
+    </div>
+  </div>
+</section>
+
+<a id="allGames" href="../../" hidden>← 全部游戏 <small>ALL GAMES</small></a>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
