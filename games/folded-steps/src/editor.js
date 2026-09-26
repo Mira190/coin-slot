@@ -19,6 +19,7 @@ const TOOLS = [
 ];
 const SLIDE_DIRS = { '+x': [1, 0, 0], '-x': [-1, 0, 0], '+z': [0, 0, 1], '-z': [0, 0, -1], '+y': [0, 1, 0], '-y': [0, -1, 0] };
 const key3 = (c) => c.join(',');
+const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 
 function starter() {
@@ -381,7 +382,7 @@ export class Editor {
     if (g.kind === 'rotor') gset = `<div class="ed-row"><label>axis</label>${['x', 'y', 'z'].map((a) => `<button data-axis="${a}" class="${(g.axis || 'y') === a ? 'on' : ''}">${a}</button>`).join('')}<label><input type="checkbox" id="edCyc" ${g.cyc !== false ? 'checked' : ''}> full turn</label></div><div class="ed-row"><label>start</label><select id="edStart">${[0, 1, 2, 3].map((v) => `<option ${v === (g.start || 0) ? 'selected' : ''}>${v}</option>`).join('')}</select><label>pivot ${g.pivot ? g.pivot.join(',') : 'auto'}</label></div>`;
     if (g.kind === 'slider') gset = `<div class="ed-row"><label>dir</label><select id="edDir">${Object.keys(SLIDE_DIRS).map((k) => `<option ${key3(SLIDE_DIRS[k]) === key3(g.dir || [1, 0, 0]) ? 'selected' : ''}>${k}</option>`).join('')}</select><label>stops</label><select id="edN">${[2, 3, 4, 5].map((v) => `<option ${v === (g.n || 3) ? 'selected' : ''}>${v}</option>`).join('')}</select></div>`;
     if (g.kind === 'lift') gset = `<div class="ed-row"><label>rises from</label><select id="edDepth">${[3, 5, 8, 11].map((v) => `<option ${v === (g.depth || 8) ? 'selected' : ''}>${v}</option>`).join('')}</select><select id="edStyle">${['rise', 'unfold'].map((v) => `<option ${v === (g.style || 'rise') ? 'selected' : ''}>${v}</option>`).join('')}</select></div>`;
-    const saved = (this.app.save.custom || []).map((c, i) => `<div><span title="${c.title}">${c.title}${c.proof ? ' ✓' : ''}</span><button data-load="${i}">Load</button><button data-play="${i}">Play</button><button data-del="${i}">✕</button></div>`).join('') || '<div><span style="opacity:.6">Nothing saved yet</span></div>';
+    const saved = (this.app.save.custom || []).map((c, i) => { const title = esc(c.title); return `<div><span title="${title}">${title}${c.proof ? ' ✓' : ''}</span><button data-load="${i}">Load</button><button data-play="${i}">Play</button><button data-del="${i}">✕</button></div>`; }).join('') || '<div><span style="opacity:.6">Nothing saved yet</span></div>';
     this.el.innerHTML = `
       <div class="ed-bar">
         <h3>Workshop</h3>
